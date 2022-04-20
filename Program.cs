@@ -162,7 +162,7 @@ namespace SHACL2DTDL
             Console.WriteLine("Generating DTDL Interface declarations: ");
 
             // Get only explicit node shapes
-            foreach(NodeShape shape in _shapesGraph.NodeShapes().Where(nodeShape => !IsIgnored(nodeShape) && !nodeShape.SuperShapes.Any(parent => IsIgnored(parent)))) {
+            foreach(NodeShape shape in _shapesGraph.NodeShapes().Where(nodeShape => !IsIgnored(nodeShape.Node) && !nodeShape.Node.SuperClasses().Any(parentClass => IsIgnored(parentClass)))) {
 
                 // Keeping track of which RDF properties we have already parsed on a given shape
                 // This is to ensure that, e.g., properties linked via rdfs:domain don't overwrite 
@@ -248,6 +248,9 @@ namespace SHACL2DTDL
                     ILiteralNode propertyNameNode = dtdlModel.CreateLiteralNode(propertyName);
                     dtdlModel.Assert(new Triple(contentNode, dtdl_name, propertyNameNode));
 
+                    // TODO: Assert rdfs:comments on properties
+
+                    // If this is a data property or if it targets a Brick value shape, we'll interpret as a DTDL property
                     if (property.Type == Property.PropertyType.Data || (property.Target is not null && IsBrickValueShape(property.Target))) {
                         // This content node is a DTDL Property
                         dtdlModel.Assert(new Triple(contentNode, rdfType, dtdl_Property));
@@ -290,6 +293,8 @@ namespace SHACL2DTDL
                         }
                     }
                 }
+
+                // TODO: Implement externalID on top-level things
 
                  // Write JSON-LD to target file.
                 JObject modelAsJsonLd = ToJsonLd(dtdlModel);
@@ -383,20 +388,14 @@ namespace SHACL2DTDL
         }
 
         /// <summary>
-        /// Checks if a given Shape should be ignored by tis tool.
+        /// Checks if a given URI node should be ignored by this tool.
         /// </summary>
-        /// <param name="shape">SHACL shape to check</param>
-        /// <returns>True iff the resource is ignored</returns>
-        private static bool IsIgnored(Shape shape)
+        /// <param name="uriNode">URI node to check</param>
+        /// <returns>True iff the node is ignored</returns>
+        private static bool IsIgnored(IUriNode uriNode)
         {
-            // If the shape is backed by a URI node, it is ignored IFF it is part of the ignoredUris set
-            if (shape.Node.NodeType == NodeType.Uri) {
-                string shapeUri = ((IUriNode)shape.Node).Uri.AbsoluteUri;
-                return ignoredUris.Any(ignoredUri => shapeUri.Contains(ignoredUri));
-            }
-            // If the shape isn't backed by a single URI node (e.g., sequence paths, 
-            // alternative paths, etc) then we ignore it (for now..)
-            return true;
+            string uri = uriNode.Uri.AbsoluteUri;
+            return ignoredUris.Any(ignoredUri => uri.Contains(ignoredUri));
         }
 
         /// <summary>
