@@ -98,5 +98,17 @@ namespace DotNetRdfExtensions
             IUriNode rdfsRange = node.Graph.CreateUriNode(RDFS.range);
             return node.Graph.GetTriplesWithSubjectPredicate(node, rdfsRange).Select(triple => triple.Object).UriNodes();
         }
+
+        public static IEnumerable<INode> Subjects(this IEnumerable<Triple> triples) {
+            return triples.Select(triple => triple.Subject);
+        }
+
+        public static IEnumerable<INode> Predicates(this IEnumerable<Triple> triples) {
+            return triples.Select(triple => triple.Predicate);
+        }
+
+        public static IEnumerable<INode> Objects(this IEnumerable<Triple> triples) {
+            return triples.Select(triple => triple.Object);
+        }
     }
 }
