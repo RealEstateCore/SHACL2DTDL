@@ -251,26 +251,25 @@ namespace SHACL2DTDL
                     // TODO: Assert rdfs:comments on properties
 
                     // If this is a data property or if it targets a Brick value shape, we'll interpret as a DTDL property
-                    if (property.Type == Property.PropertyType.Data || (property.Target is not null && IsBrickValueShape(property.Target))) {
+                    if (property.Type == Property.PropertyType.Data || (property.Target != null && IsBrickValueShape(property.Target))) {
                         // This content node is a DTDL Property
                         dtdlModel.Assert(new Triple(contentNode, rdfType, dtdl_Property));
 
-                        // Assert the property schema (falling back to a string if none is defined or translation can't be carried out)
-                        INode schemaNode = dtdlModel.CreateUriNode(DTDL._string);
-                        if (property.Target is IUriNode target) {
-                            if (IsBrickValueShape(target)) {
-                                NodeShape targetShape = new NodeShape(target, _shapesGraph);
-                                schemaNode = dtdlModel.CreateBlankNode();
-                                AssertDtdlSchemaFromBrickValueShape(schemaNode, targetShape);
-                            }
-                            else if (target.IsXsdType()) {
-                                schemaNode = dtdlModel.CreateUriNode(GetXsdAsDtdl(target));
-                            } 
+                        INode schemaNode;
+                        if (property.Type == Property.PropertyType.Data) {
+                            // This is a simple data property translation
+                            // If target is unset, fall back to string; else try XSD translation
+                            // TODO: Handle sh:in -> DTDL enumeration translation?
+                            Uri schema = property.Target is null ? DTDL._string : GetXsdAsDtdl(property.Target);
+                            schemaNode = dtdlModel.CreateUriNode(schema);
+                            dtdlModel.Assert(new Triple(contentNode, dtdl_schema, schemaNode));
                         }
-                        else {
-                            schemaNode = dtdlModel.CreateUriNode(DTDL._string);
+                        else if (property.Target != null && IsBrickValueShape(property.Target)) {
+                            // This is a Brick ValueShape translation
+                            NodeShape targetShape = new NodeShape(property.Target, _shapesGraph);
+                            schemaNode = AssertDtdlSchemaFromBrickValueShape(targetShape, dtdlModel);
+                            dtdlModel.Assert(new Triple(contentNode, dtdl_schema, schemaNode));
                         }
-                        dtdlModel.Assert(new Triple(contentNode, dtdl_schema, schemaNode));
                     }
                     else if (property.Type == Property.PropertyType.Object) {
                         // Assert that this is a DTDL Relationship
@@ -448,28 +447,52 @@ namespace SHACL2DTDL
             return node.IsNodeShape() && node.SuperClasses().Any(superClass => superClass.Uri.AbsoluteUri.Contains("https://brickschema.org/schema/BrickShape#ValueShape"));
         }
 
-        public static void AssertDtdlSchemaFromBrickValueShape(INode dtdlSchemaNode, NodeShape shape) {
-            IGraph dtdlGraph = dtdlSchemaNode.Graph;
+        public static INode AssertDtdlSchemaFromBrickValueShape(NodeShape shape, Graph dtdlGraph) {
             IUriNode dtdlSchema = dtdlGraph.CreateUriNode(DTDL.schema);
             IUriNode rdfType = dtdlGraph.CreateUriNode(RDF.type);
             IUriNode dtdlObject = dtdlGraph.CreateUriNode(DTDL.Object);
             IUriNode dtdlFields = dtdlGraph.CreateUriNode(DTDL.fields);
             IUriNode dtdlName = dtdlGraph.CreateUriNode(DTDL.name);
 
-            dtdlGraph.Assert(dtdlSchemaNode, rdfType, dtdlObject);
-            
-            // Todo: handle duplicate property shape declarations on the same property (common in Brick..)
-            // If after deduplication we have only one simple property shape decl left, coalesce into a simple schema type
-            // TODO: how about nested objects?
+            // Deduplicate property shape declarations on the same property (common in Brick)
+            // TODO: We're keeping only the first entry, it would be more correct to build some sort of property shape
+            // merge logic, but that's for a next version..
+            HashSet<Property> valueShapeProperties = new HashSet<Property>(new Property.PropertyNameComparer());
             foreach (PropertyShape ps in shape.PropertyShapes) {
-                IBlankNode fieldNode = dtdlGraph.CreateBlankNode();
-                ILiteralNode fieldName = dtdlGraph.CreateLiteralNode(((IUriNode)ps.Path).LocalName());
-                dtdlGraph.Assert(dtdlSchemaNode, dtdlFields, fieldNode);
-                dtdlGraph.Assert(fieldNode, dtdlName, fieldName);
+                valueShapeProperties.Add(new Property(ps));
+            }
 
-                // TODO: Implement schema translation here
-                IUriNode dtdlString = dtdlGraph.CreateUriNode(DTDL._string);
-                dtdlGraph.Assert(fieldNode, dtdlSchema, dtdlString);
+            // If after deduplication we have no property shapes, just return a string schema. This probably should not happen 
+            // (there's not much point to a Brick ValueShape without any property shapes hanging off it..)
+            if (valueShapeProperties.Count() < 1) {
+                return dtdlGraph.CreateUriNode(DTDL._string);
+            }
+            // If after deduplication we have only one simple property shape left, coalesce into a simple schema type
+            if (valueShapeProperties.Count() == 1) {
+                Property valueShapeProperty = valueShapeProperties.First();
+                // Falling back to string if no target is defined
+                Uri targetAsXSD = valueShapeProperty.Target is not null ? GetXsdAsDtdl(valueShapeProperty.Target): DTDL._string;
+                return dtdlGraph.CreateUriNode(targetAsXSD);
+            }
+            // Otherwise, translate all the property shapes into DTDL object fields
+            else {
+                IBlankNode dtdlSchemaNode = dtdlGraph.CreateBlankNode();
+                dtdlGraph.Assert(dtdlSchemaNode, rdfType, dtdlObject);
+
+                foreach (Property valueShapeProperty in valueShapeProperties) {
+                    IBlankNode fieldNode = dtdlGraph.CreateBlankNode();
+                    ILiteralNode fieldName = dtdlGraph.CreateLiteralNode(valueShapeProperty.WrappedProperty.LocalName());
+                    dtdlGraph.Assert(dtdlSchemaNode, dtdlFields, fieldNode);
+                    dtdlGraph.Assert(fieldNode, dtdlName, fieldName);
+
+                    // TODO: Handle sh:in -> DTDL enumeration translation?
+
+                    // Schema translation
+                    Uri targetAsXSD = valueShapeProperty.Target is not null ? GetXsdAsDtdl(valueShapeProperty.Target): DTDL._string;
+                    IUriNode fieldSchemaNode = dtdlGraph.CreateUriNode(targetAsXSD);
+                    dtdlGraph.Assert(fieldNode, dtdlSchema, fieldSchemaNode);
+                }
+                return dtdlSchemaNode;
             }
         }
     }
