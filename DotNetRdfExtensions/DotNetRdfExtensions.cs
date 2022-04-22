@@ -2,6 +2,7 @@ using VDS.RDF;
 using VDS.RDF.Shacl;
 using SHACL2DTDL.VocabularyHelper;
 using VDS.RDF.Parsing;
+using VDS.RDF.Ontology;
 
 namespace DotNetRdfExtensions
 {
@@ -109,6 +110,38 @@ namespace DotNetRdfExtensions
 
         public static IEnumerable<INode> Objects(this IEnumerable<Triple> triples) {
             return triples.Select(triple => triple.Object);
+        }
+
+        public static bool IsEnumerationDatatype(this OntologyClass oClass)
+        {
+            INode oneOf = oClass.Graph.CreateUriNode(OWL.oneOf);
+            if (oClass.IsRdfsDatatype()) {
+                if (oClass.EquivalentClasses.Count() == 1) {
+                    return oClass.EquivalentClasses.Single().GetNodesViaPredicate(oneOf).Count() == 1;
+                }
+                else
+                {
+                    return oClass.GetNodesViaPredicate(oneOf).Count() == 1;
+                }
+            }
+            return false;
+        }
+
+        public static IEnumerable<INode> AsEnumeration(this OntologyClass oClass)
+        {
+            INode oneOf = oClass.Graph.CreateUriNode(OWL.oneOf);
+            INode list = oClass.EquivalentClasses.Append(oClass).SelectMany(equiv => equiv.GetNodesViaPredicate(oneOf)).First();
+            return oClass.Graph.GetListItems(list);
+        }
+
+        public static IEnumerable<INode> GetNodesViaPredicate(this OntologyResource resource, INode predicate)
+        {
+            return resource.Graph.GetTriplesWithSubjectPredicate(resource.Resource, predicate).Objects();
+        }
+
+        public static bool IsRdfsDatatype(this OntologyClass oClass)
+        {
+            return oClass.Types.UriNodes().Any(classType => classType.Uri.AbsoluteUri.Equals(RDFS.Datatype.AbsoluteUri));
         }
     }
 }

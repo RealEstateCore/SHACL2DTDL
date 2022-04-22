@@ -453,6 +453,11 @@ namespace SHACL2DTDL
             IUriNode dtdlObject = dtdlGraph.CreateUriNode(DTDL.Object);
             IUriNode dtdlFields = dtdlGraph.CreateUriNode(DTDL.fields);
             IUriNode dtdlName = dtdlGraph.CreateUriNode(DTDL.name);
+            IUriNode dtdlString = dtdlGraph.CreateUriNode(DTDL._string);
+            IUriNode dtdlEnum = dtdlGraph.CreateUriNode(DTDL.Enum);
+            IUriNode dtdlValueSchema = dtdlGraph.CreateUriNode(DTDL.valueSchema);
+            IUriNode dtdlEnumValue = dtdlGraph.CreateUriNode(DTDL.enumValue);
+            IUriNode dtdlEnumValues = dtdlGraph.CreateUriNode(DTDL.enumValues);
 
             // Deduplicate property shape declarations on the same property (common in Brick)
             // TODO: We're keeping only the first entry, it would be more correct to build some sort of property shape
@@ -485,12 +490,32 @@ namespace SHACL2DTDL
                     dtdlGraph.Assert(dtdlSchemaNode, dtdlFields, fieldNode);
                     dtdlGraph.Assert(fieldNode, dtdlName, fieldName);
 
-                    // TODO: Handle sh:in -> DTDL enumeration translation?
+                    // If the property has an enumeration (rdf:List as rdfs:range or sh:in on SHACL shape) -> DTDL enumeration translation
+                    if (valueShapeProperty.In.Count() > 0) {
+                        IEnumerable<string> literalNodeEnumOptions = valueShapeProperty.In.LiteralNodes().Select(node => node.Value);
+                        IEnumerable<string> uriNodeEnumOptions = valueShapeProperty.In.UriNodes().Select(node => node.LocalName());
+                        IEnumerable<string> allEnumOptions = literalNodeEnumOptions.Concat(uriNodeEnumOptions);
 
-                    // Schema translation
-                    Uri targetAsXSD = valueShapeProperty.Target is not null ? GetXsdAsDtdl(valueShapeProperty.Target): DTDL._string;
-                    IUriNode fieldSchemaNode = dtdlGraph.CreateUriNode(targetAsXSD);
-                    dtdlGraph.Assert(fieldNode, dtdlSchema, fieldSchemaNode);
+                        IBlankNode enumNode = dtdlGraph.CreateBlankNode();
+                        dtdlGraph.Assert(fieldNode, dtdlSchema, enumNode);
+                        dtdlGraph.Assert(enumNode, rdfType, dtdlEnum);
+                        dtdlGraph.Assert(enumNode, dtdlValueSchema, dtdlString);
+                        
+                        foreach (string option in allEnumOptions)
+                        {
+                            IBlankNode enumOption = dtdlGraph.CreateBlankNode();
+                            dtdlGraph.Assert(enumOption, dtdlName, dtdlGraph.CreateLiteralNode(option));
+                            dtdlGraph.Assert(enumOption, dtdlEnumValue, dtdlGraph.CreateLiteralNode(option));
+                            dtdlGraph.Assert(enumNode, dtdlEnumValues, enumOption);
+                        }
+
+                    }
+                    else {
+                        // Target schema translation
+                        Uri targetAsXSD = valueShapeProperty.Target is not null ? GetXsdAsDtdl(valueShapeProperty.Target): DTDL._string;
+                        IUriNode fieldSchemaNode = dtdlGraph.CreateUriNode(targetAsXSD);
+                        dtdlGraph.Assert(fieldNode, dtdlSchema, fieldSchemaNode);
+                    }
                 }
                 return dtdlSchemaNode;
             }

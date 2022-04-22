@@ -15,6 +15,7 @@ namespace SHACL2DTDL
 
         public IUriNode WrappedProperty { get; }
         public IUriNode? Target { get; }
+        public IEnumerable<INode> In { get; }
         public int? MaxCardinality { get; set; }
         public int? MinCardinality { get; set; }
         public PropertyType Type { get; set; }
@@ -46,6 +47,8 @@ namespace SHACL2DTDL
                 Target = pShape.Class.FirstOrDefault();
             }
 
+            In = pShape.In;
+
             // Set cardinality
             // Note: both of these can be null
             MinCardinality = pShape.MinCount;
@@ -59,11 +62,17 @@ namespace SHACL2DTDL
             }
             WrappedProperty = (IUriNode)property.Resource;
 
+            In = new List<INode>();
             // Set Target if singleton URI exists
-            if (property.Ranges.Count() == 1 && property.Ranges.Any(range => range.Resource is IUriNode)) {
-                OntologyClass range = property.Ranges.First();
-                IUriNode rangeNode = (IUriNode)range.Resource;
-                Target = rangeNode;
+            if (property.Ranges.Count() == 1) {
+                if (property.Ranges.First().Resource is IUriNode) {
+                    OntologyClass range = property.Ranges.First();
+                    IUriNode rangeNode = (IUriNode)range.Resource;
+                    Target = rangeNode;
+                }
+                if (property.Ranges.First().IsEnumerationDatatype()) {
+                    In = property.Ranges.First().AsEnumeration();
+                }
             }
 
             // If we are declared to be an OWL datatype property or if our range is explicitly a XSD, then we are a data property

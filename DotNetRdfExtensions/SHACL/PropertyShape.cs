@@ -30,6 +30,14 @@ namespace DotNetRdfExtensions.SHACL
             }
         }
 
+        public IEnumerable<INode> In {
+            get {
+                IUriNode shIn = _graph.CreateUriNode(SH.In);
+                IEnumerable<INode> inListRoots = _graph.GetTriplesWithSubjectPredicate(_node, shIn).Objects();
+                return inListRoots.SelectMany(listItem => _graph.GetListItems(listItem));
+            }
+        }
+
         public int? MinCount {
             get {
                 IUriNode shMinCount = _graph.CreateUriNode(SH.minCount);
