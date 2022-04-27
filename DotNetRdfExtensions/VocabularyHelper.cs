@@ -26,7 +26,9 @@ namespace DotNetRdfExtensions
         public static readonly Uri datatype = new Uri("http://www.w3.org/ns/shacl#datatype");
         public static readonly Uri minCount = new Uri("http://www.w3.org/ns/shacl#minCount");
         public static readonly Uri maxCount = new Uri("http://www.w3.org/ns/shacl#maxCount");
-        public static readonly Uri nodeKind = new Uri("http://www.w3.org/ns/shacl#nodeKind");   
+        public static readonly Uri nodeKind = new Uri("http://www.w3.org/ns/shacl#nodeKind");
+        public static readonly Uri name = new Uri("http://www.w3.org/ns/shacl#name");
+        public static readonly Uri description = new Uri("http://www.w3.org/ns/shacl#description");
     }
 
     public static class RDF

@@ -38,6 +38,20 @@ namespace DotNetRdfExtensions.SHACL
             }
         }
 
+        public IEnumerable<ILiteralNode> Names {
+            get {
+                IUriNode shName = _graph.CreateUriNode(SH.name);
+                return _graph.GetTriplesWithSubjectPredicate(_node, shName).Objects().LiteralNodes();
+            }
+        }
+
+        public IEnumerable<ILiteralNode> Descriptions {
+            get {
+                IUriNode shDescription = _graph.CreateUriNode(SH.description);
+                return _graph.GetTriplesWithSubjectPredicate(_node, shDescription).Objects().LiteralNodes();
+            }
+        }
+
         public int? MinCount {
             get {
                 IUriNode shMinCount = _graph.CreateUriNode(SH.minCount);

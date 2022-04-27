@@ -19,6 +19,8 @@ namespace SHACL2DTDL
         public int? MaxCardinality { get; set; }
         public int? MinCardinality { get; set; }
         public PropertyType Type { get; set; }
+        public IEnumerable<ILiteralNode> Labels { get; init; }
+        public IEnumerable<ILiteralNode> Comments { get; init; }
 
         public string Name {
             get {
@@ -34,6 +36,20 @@ namespace SHACL2DTDL
                 throw new ArgumentException($"Property path {pShape.Path} is not a URI node");
             }
             WrappedProperty = (IUriNode)pShape.Path;
+
+            // Set up labels and comments from property shape or (fallback) from wrapped property label/comment
+            if (pShape.Names.Count() > 0) {
+                Labels = pShape.Names;
+            }
+            else {
+                Labels = pShape.Path.RdfsLabels();
+            }
+            if (pShape.Descriptions.Count() > 0) {
+                Comments = pShape.Descriptions;
+            }
+            else {
+                Comments = pShape.Path.RdfsComments();
+            }
 
             // Set Type & Target
             if (pShape.Datatype is IUriNode || (pShape.NodeKind is IUriNode nodeKind1 && nodeKind1.LocalName() == "Literal")) {
@@ -61,6 +77,8 @@ namespace SHACL2DTDL
                 throw new ArgumentException($"Property path {property.Resource} is not a URI node");
             }
             WrappedProperty = (IUriNode)property.Resource;
+            Labels = property.Resource.RdfsLabels();
+            Comments = property.Resource.RdfsComments();
 
             In = new List<INode>();
             // Set Target if singleton URI exists

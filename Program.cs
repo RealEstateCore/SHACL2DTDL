@@ -328,7 +328,37 @@ namespace SHACL2DTDL
                     ILiteralNode propertyNameNode = dtdlModel.CreateLiteralNode(propertyName);
                     dtdlModel.Assert(new Triple(contentNode, dtdl_name, propertyNameNode));
 
-                    // TODO: Assert rdfs:comments on properties
+                    // If there are property labels, use them for DTDL displayName
+                    Dictionary<string,string> propertyLabelMap = new();
+                    foreach (LiteralNode propertyLabel in property.Labels) {
+                        // Flatten possibly multiple occurences of labels with a given language tag, keep only one
+                        propertyLabelMap[propertyLabel.Language] = propertyLabel.Value;
+                    }
+                    foreach (string propertyLabelLanguageTag in propertyLabelMap.Keys) {
+                        // Create a displayName assertion for reach of the above labels
+                        ILiteralNode dtdlDisplayNameLiteral;
+                        if (propertyLabelLanguageTag == String.Empty) // Fall back to EN language if none is defined b/c DTDL validator cannot handle language @none
+                            dtdlDisplayNameLiteral = dtdlModel.CreateLiteralNode(string.Concat(propertyLabelMap[propertyLabelLanguageTag].Take(64)),"en");
+                        else
+                            dtdlDisplayNameLiteral = dtdlModel.CreateLiteralNode(string.Concat(propertyLabelMap[propertyLabelLanguageTag].Take(64)), propertyLabelLanguageTag);
+                        dtdlModel.Assert(new Triple(contentNode, dtdl_displayName, dtdlDisplayNameLiteral));
+                    }
+
+                    // If there are property comments, use them for DTDL description
+                    Dictionary<string,string> propertyDescriptionMap = new();
+                    foreach (LiteralNode propertyComment in property.Comments) {
+                        // Flatten possibly multiple occurences of comments with a given language tag, keep only one
+                        propertyDescriptionMap[propertyComment.Language] = propertyComment.Value;
+                    }
+                    foreach (string propertyCommentLanguageTag in propertyDescriptionMap.Keys) {
+                        // Create a description assertion for reach of the above comments
+                        ILiteralNode dtdlDescriptionLiteral;
+                        if (propertyCommentLanguageTag == String.Empty) // Fall back to EN language if none is defined b/c DTDL validator cannot handle language @none
+                            dtdlDescriptionLiteral = dtdlModel.CreateLiteralNode(string.Concat(propertyDescriptionMap[propertyCommentLanguageTag].Take(512)),"en");
+                        else
+                            dtdlDescriptionLiteral = dtdlModel.CreateLiteralNode(string.Concat(propertyDescriptionMap[propertyCommentLanguageTag].Take(512)), propertyCommentLanguageTag);
+                        dtdlModel.Assert(new Triple(contentNode, dtdl_description, dtdlDescriptionLiteral));
+                    }
 
                     // If this is a data property or if it targets a Brick value shape, we'll interpret as a DTDL property
                     if (property.Type == Property.PropertyType.Data || (property.Target != null && IsBrickValueShape(property.Target))) {
