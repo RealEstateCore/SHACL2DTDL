@@ -162,7 +162,7 @@ namespace SHACL2DTDL
             Console.WriteLine("Generating DTDL Interface declarations: ");
 
             // Get only explicit node shapes
-            foreach(NodeShape shape in _shapesGraph.NodeShapes().Where(nodeShape => !IsIgnored(nodeShape.Node) && !nodeShape.Node.SuperClasses().Any(parentClass => IsIgnored(parentClass)))) {
+            foreach(NodeShape shape in _shapesGraph.NodeShapes().Where(nodeShape => nodeShape.Node.IsClass() && !IsIgnored(nodeShape.Node) && !nodeShape.Node.SuperClasses().Any(parentClass => IsIgnored(parentClass)))) {
 
                 // Keeping track of which RDF properties we have already parsed on a given shape
                 // This is to ensure that, e.g., properties linked via rdfs:domain don't overwrite 
@@ -292,8 +292,6 @@ namespace SHACL2DTDL
                         }
                     }
                 }
-
-                // TODO: Implement externalID on top-level things
 
                  // Write JSON-LD to target file.
                 JObject modelAsJsonLd = ToJsonLd(dtdlModel);

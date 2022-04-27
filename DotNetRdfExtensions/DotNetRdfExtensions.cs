@@ -12,6 +12,24 @@ namespace DotNetRdfExtensions
             return graph.ContainsTriple(new Triple(subj, pred, obj));
         }
 
+        public static bool IsOwlClass(this INode node) {
+            IGraph graph = node.Graph;
+            IUriNode rdfType = graph.CreateUriNode(RDF.type);
+            IUriNode owlClass = graph.CreateUriNode(OWL.Class);
+            return graph.ContainsTriple(node, rdfType, owlClass);
+        }
+
+        public static bool IsRdfsClass(this INode node) {
+            IGraph graph = node.Graph;
+            IUriNode rdfType = graph.CreateUriNode(RDF.type);
+            IUriNode rdfsClass = graph.CreateUriNode(RDFS.Class);
+            return graph.ContainsTriple(node, rdfType, rdfsClass);
+        }
+
+        public static bool IsClass(this INode node) {
+            return node.IsRdfsClass() || node.IsOwlClass();
+        }
+
         public static string LocalName(this IUriNode node)
         {
             if (node.Uri.Fragment.Length > 0)

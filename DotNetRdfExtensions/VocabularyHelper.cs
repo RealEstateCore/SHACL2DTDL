@@ -44,10 +44,12 @@ namespace DotNetRdfExtensions
         public static readonly Uri Datatype = new Uri("http://www.w3.org/2000/01/rdf-schema#Datatype");
         public static readonly Uri Literal = new Uri("http://www.w3.org/2000/01/rdf-schema#Literal");
         public static readonly Uri Resource = new Uri("http://www.w3.org/2000/01/rdf-schema#Resource");
+        public static readonly Uri Class = new Uri("http://www.w3.org/2000/01/rdf-schema#Class");
     }
 
     public static class OWL
     {
+        public static readonly Uri Class = new Uri("http://www.w3.org/2002/07/owl#Class");
         public static readonly Uri ObjectProperty = new Uri("http://www.w3.org/2002/07/owl#ObjectProperty");
         public static readonly Uri DatatypeProperty = new Uri("http://www.w3.org/2002/07/owl#DatatypeProperty");
         public static readonly Uri Thing = new Uri("http://www.w3.org/2002/07/owl#Thing");
