@@ -218,6 +218,86 @@ namespace SHACL2DTDL
                         dtdlModel.Assert(new Triple(interfaceNode, dtdl_extends, superInterfaceNode));
                     }
                 }
+                // If it doesn't have superclasses, implement generic name property, externalIDs, and customTags
+                else {
+                    // Create name property node and name
+                    IBlankNode namePropertyNode = dtdlModel.CreateBlankNode();
+                    dtdlModel.Assert(new Triple(interfaceNode, dtdl_contents, namePropertyNode));
+                    dtdlModel.Assert(new Triple(namePropertyNode, rdfType, dtdl_Property));
+                    ILiteralNode namePropertyDtdlNameNode = dtdlModel.CreateLiteralNode("name");
+                    dtdlModel.Assert(new Triple(namePropertyNode, dtdl_name, namePropertyDtdlNameNode));
+                    // Name is string
+                    IUriNode namePropertySchemaNode = dtdlModel.CreateUriNode(DTDL._string);
+                    dtdlModel.Assert(new Triple(namePropertyNode, dtdl_schema, namePropertySchemaNode));
+                    // Display name (of name property) is hardcoded to "name".
+                    ILiteralNode namePropertyDisplayNameNode = dtdlModel.CreateLiteralNode("name", "en");
+                    dtdlModel.Assert(new Triple(namePropertyNode, dtdl_displayName, namePropertyDisplayNameNode));
+                    // Name is writeable
+                    ILiteralNode namePropertyTrueNode = dtdlModel.CreateLiteralNode("true", new Uri(XmlSpecsHelper.XmlSchemaDataTypeBoolean));
+                    dtdlModel.Assert(new Triple(namePropertyNode, dtdl_writable, namePropertyTrueNode));
+
+                    // Create externalIds
+                    IBlankNode externalIds = dtdlModel.CreateBlankNode();
+                    dtdlModel.Assert(new Triple(interfaceNode, dtdl_contents, externalIds));
+                    dtdlModel.Assert(new Triple(externalIds, rdfType, dtdl_Property));
+                    ILiteralNode externalIdsDtdlName = dtdlModel.CreateLiteralNode("externalIds");
+                    dtdlModel.Assert(new Triple(externalIds, dtdl_name, externalIdsDtdlName));
+                    // External ids is map
+                    IBlankNode schemaNode = dtdlModel.CreateBlankNode();
+                    dtdlModel.Assert(new Triple(schemaNode, rdfType, dtdl_Map));
+                    // Map key
+                    IBlankNode schemaMapKey = dtdlModel.CreateBlankNode();
+                    dtdlModel.Assert(new Triple(schemaNode, dtdl_mapKey, schemaMapKey));
+                    ILiteralNode schemaMapKeyName = dtdlModel.CreateLiteralNode("externalIdName");
+                    dtdlModel.Assert(new Triple(schemaMapKey, dtdl_name, schemaMapKeyName));
+                    IUriNode schemaMapKeySchema = dtdlModel.CreateUriNode(DTDL._string);
+                    dtdlModel.Assert(new Triple(schemaMapKey, dtdl_schema, schemaMapKeySchema));
+                    // Map value
+                    IBlankNode schemaMapValue = dtdlModel.CreateBlankNode();
+                    dtdlModel.Assert(new Triple(schemaNode, dtdl_mapValue, schemaMapValue));
+                    ILiteralNode schemaMapValueName = dtdlModel.CreateLiteralNode("externalIdValue");
+                    dtdlModel.Assert(new Triple(schemaMapValue, dtdl_name, schemaMapValueName));
+                    IUriNode schemaMapValueSchema = dtdlModel.CreateUriNode(DTDL._string);
+                    dtdlModel.Assert(new Triple(schemaMapValue, dtdl_schema, schemaMapValueSchema));
+                    dtdlModel.Assert(new Triple(externalIds, dtdl_schema, schemaNode));
+                    // Display name of external ids is hardcoded to "External IDs".
+                    ILiteralNode externalIdsDisplayName = dtdlModel.CreateLiteralNode("External IDs", "en");
+                    dtdlModel.Assert(new Triple(externalIds, dtdl_displayName, externalIdsDisplayName));
+                    // Name is writeable
+                    ILiteralNode externalIdsTrue = dtdlModel.CreateLiteralNode("true", new Uri(XmlSpecsHelper.XmlSchemaDataTypeBoolean));
+                    dtdlModel.Assert(new Triple(externalIds, dtdl_writable, externalIdsTrue));
+
+                    // Create customTags
+                    IBlankNode customTags = dtdlModel.CreateBlankNode();
+                    dtdlModel.Assert(new Triple(interfaceNode, dtdl_contents, customTags));
+                    dtdlModel.Assert(new Triple(customTags, rdfType, dtdl_Property));
+                    ILiteralNode customTagsDtdlName = dtdlModel.CreateLiteralNode("customTags");
+                    dtdlModel.Assert(new Triple(customTags, dtdl_name, customTagsDtdlName));
+                    // Custom tags is map
+                    IBlankNode customTagsSchemaNode = dtdlModel.CreateBlankNode();
+                    dtdlModel.Assert(new Triple(customTagsSchemaNode, rdfType, dtdl_Map));
+                    // Map key
+                    IBlankNode customTagsSchemaMapKey = dtdlModel.CreateBlankNode();
+                    dtdlModel.Assert(new Triple(customTagsSchemaNode, dtdl_mapKey, customTagsSchemaMapKey));
+                    ILiteralNode customTagsSchemaMapKeyName = dtdlModel.CreateLiteralNode("tagName");
+                    dtdlModel.Assert(new Triple(customTagsSchemaMapKey, dtdl_name, customTagsSchemaMapKeyName));
+                    IUriNode customTagsSchemaMapKeySchema = dtdlModel.CreateUriNode(DTDL._string);
+                    dtdlModel.Assert(new Triple(customTagsSchemaMapKey, dtdl_schema, customTagsSchemaMapKeySchema));
+                    // Map value
+                    IBlankNode customTagsSchemaMapValue = dtdlModel.CreateBlankNode();
+                    dtdlModel.Assert(new Triple(customTagsSchemaNode, dtdl_mapValue, customTagsSchemaMapValue));
+                    ILiteralNode customTagsSchemaMapValueName = dtdlModel.CreateLiteralNode("tagValue");
+                    dtdlModel.Assert(new Triple(customTagsSchemaMapValue, dtdl_name, customTagsSchemaMapValueName));
+                    IUriNode customTagsSchemaMapValueSchema = dtdlModel.CreateUriNode(DTDL._string);
+                    dtdlModel.Assert(new Triple(customTagsSchemaMapValue, dtdl_schema, customTagsSchemaMapValueSchema));
+                    dtdlModel.Assert(new Triple(customTags, dtdl_schema, customTagsSchemaNode));
+                    // Display name of custom tags is hardcoded to "Custom Tags".
+                    ILiteralNode customTagsDisplayName = dtdlModel.CreateLiteralNode("Custom Tags", "en");
+                    dtdlModel.Assert(new Triple(customTags, dtdl_displayName, customTagsDisplayName));
+                    // Name is writeable
+                    ILiteralNode customTagsTrue = dtdlModel.CreateLiteralNode("true", new Uri(XmlSpecsHelper.XmlSchemaDataTypeBoolean));
+                    dtdlModel.Assert(new Triple(customTags, dtdl_writable, customTagsTrue));
+                }
 
                 // Index all property shapes on the node shape
                 // HashSet with name comparer means we only store every property once, regardless of if it is mentioned multiple times in source
