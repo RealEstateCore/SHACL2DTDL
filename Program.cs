@@ -582,11 +582,12 @@ namespace SHACL2DTDL
                         foreach (string option in allEnumOptions)
                         {
                             IBlankNode enumOption = dtdlGraph.CreateBlankNode();
-                            dtdlGraph.Assert(enumOption, dtdlName, dtdlGraph.CreateLiteralNode(option));
-                            dtdlGraph.Assert(enumOption, dtdlEnumValue, dtdlGraph.CreateLiteralNode(option));
+                            char[] numbers = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+                            string sanitizedOption = Regex.Replace(option, @"[^A-Za-z0-9_]", "_").TrimStart(numbers);
+                            dtdlGraph.Assert(enumOption, dtdlName, dtdlGraph.CreateLiteralNode(sanitizedOption));
+                            dtdlGraph.Assert(enumOption, dtdlEnumValue, dtdlGraph.CreateLiteralNode(sanitizedOption));
                             dtdlGraph.Assert(enumNode, dtdlEnumValues, enumOption);
                         }
-
                     }
                     else {
                         // Target schema translation
