@@ -425,32 +425,62 @@ namespace SHACL2DTDL
 
         }
 
-        // TODO: Implement this properly in adherence w/ https://github.com/Azure/digital-twin-model-identifier
-        private static string GetDTMI(INode inputNode) {
-            if (inputNode.NodeType == NodeType.Literal) {
-                throw new ArgumentException("Attempting to generate DTMI from literal node.");
+        /// <summary>
+        /// Generate Digital Twin Model Identifiers; these will be based on reverse dns + path.
+        /// </summary>
+        /// <param name="resource">Resource to generate DTMI for</param>
+        /// <returns>DTMI</returns>
+        private static string GetDTMI(IUriNode resource)
+        {
+            // Get the resource namespace for DTMI minting (see below)
+            Uri resourceNamespace = resource.GetNamespace();
+            char[] uriTrimChars = { '#', '/' };
+
+            // Combine (reversed) host and path component arrays to create namespace components array
+            string[] hostComponents = resourceNamespace.Host.Split('.');
+            Array.Reverse(hostComponents);
+            string[] pathComponents = resourceNamespace.AbsolutePath.Trim(uriTrimChars).Split('/');
+            string[] namespaceComponents = hostComponents.Concat(pathComponents).ToArray();
+
+            // The ontologyName is the last component in the namespace array
+            string ontologyName = namespaceComponents.Last();
+
+            // If an ontology source has been set at CLI option, use it; otherwise generate from the namespace
+            // components array (omitting the previously extracted ontologyName component)
+            string ontologySource;
+            if (_ontologySource != null)
+            {
+                ontologySource = _ontologySource;
             }
-            if (inputNode.NodeType == NodeType.Blank) {
-                return $"dtmi:digitaltwins:{System.Guid.NewGuid().ToString()};1";
+            else
+            {
+                string[] ontologySourceComponents = namespaceComponents.Take(namespaceComponents.Count() - 1).ToArray();
+                ontologySource = string.Join(':', ontologySourceComponents);
             }
-            IUriNode node = (IUriNode)inputNode;
-            string hostPortion = node.Uri.Host.Replace('.',':');
-            string pathPortion = node.Uri.LocalPath.Trim('/').Replace('/',':');
-            string fragmentPortion = node.Uri.Fragment.Trim('#');
-            string dtmi = $"{hostPortion}:{pathPortion}:{fragmentPortion}";
-            string cleanedDtmi = "";
-            foreach (string segment in dtmi.Split(':')) {
-                string cleanedSegment = Regex.Replace(segment, @"[^a-zA-Z0-9_]", "");
-                cleanedSegment = cleanedSegment.TrimEnd('_');
-                char[] digits = {'0','1','2','3','4','5','6','7','8','9'};
-                cleanedSegment = cleanedSegment.TrimStart(digits);
-                if (cleanedSegment.Length > 0) {
-                    cleanedDtmi += $"{cleanedSegment}:";
-                }
+
+            // Put together the pieces
+            string dtmi = $"{ontologySource}:{ontologyName}:{resource.LocalName()}";
+
+            // Run the candidate DTMI through validation per the spec, removing non-conforming chars
+            string[] pathSegments = dtmi.Split(':');
+            for (int i = 0; i < pathSegments.Length; i++)
+            {
+                string pathSegment = pathSegments[i];
+                pathSegment = new string((from c in pathSegment
+                                          where char.IsLetterOrDigit(c) || c.Equals('_')
+                                          select c
+                                          ).ToArray());
+                pathSegment = pathSegment.TrimEnd('_');
+                pathSegment = pathSegment.TrimStart(new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'});
+                pathSegments[i] = pathSegment;
             }
-            cleanedDtmi = cleanedDtmi.TrimEnd(':');
+            dtmi = string.Join(':', pathSegments);
+
+            // Hard-coded for now
             string dtmiVersion = "1";
-            return $"dtmi:digitaltwins:{cleanedDtmi};{dtmiVersion}";
+
+            // Add prefix and suffix
+            return $"dtmi:digitaltwins:{dtmi};{dtmiVersion}";
         }
 
         /// <summary>

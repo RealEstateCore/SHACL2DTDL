@@ -8,6 +8,7 @@ namespace DotNetRdfExtensions
 {
     public static class DotNetRdfExtensions
     {
+        // TODO: Structure all of this rather messy code.
         public static bool ContainsTriple(this IGraph graph, INode subj, INode pred, INode obj) {
             return graph.ContainsTriple(new Triple(subj, pred, obj));
         }
@@ -24,6 +25,22 @@ namespace DotNetRdfExtensions
             IUriNode rdfType = graph.CreateUriNode(RDF.type);
             IUriNode rdfsClass = graph.CreateUriNode(RDFS.Class);
             return graph.ContainsTriple(node, rdfType, rdfsClass);
+        }
+
+        // TODO: This should probably be fixed to handle URN namespaces properly.
+        public static Uri GetNamespace(this IUriNode node)
+        {
+            if (node.Uri.Fragment.Length > 0)
+            {
+                return new Uri(node.Uri.GetLeftPart(UriPartial.Path) + "#");
+            }
+            string nodeUriPath = node.Uri.GetLeftPart(UriPartial.Path);
+            if (nodeUriPath.Count(x => x == '/') >= 3)
+            {
+                string nodeUriBase = nodeUriPath.Substring(0, nodeUriPath.LastIndexOf("/", StringComparison.Ordinal) + 1);
+                return new Uri(nodeUriBase);
+            }
+            throw new UriFormatException($"The Uri {node.Uri} doesn't contain a namespace/local name separator.");
         }
 
         public static bool IsClass(this INode node) {
