@@ -361,7 +361,7 @@ namespace SHACL2DTDL
                     }
 
                     // If this is a data property or if it targets a Brick value shape, we'll interpret as a DTDL property
-                    if (property.Type == Property.PropertyType.Data || (property.Target != null && IsBrickValueShape(property.Target))) {
+                    if (property.Type == Property.PropertyType.Data || (property.Target != null && IsBrickValueShape(property.Target)) || property.Target != null && IsDtdlEnumeration(property.Target)) {
                         // This content node is a DTDL Property
                         dtdlModel.Assert(new Triple(contentNode, rdfType, dtdl_Property));
 
@@ -379,6 +379,32 @@ namespace SHACL2DTDL
                             NodeShape targetShape = new NodeShape(property.Target, _shapesGraph);
                             schemaNode = AssertDtdlSchemaFromBrickValueShape(targetShape, dtdlModel);
                             dtdlModel.Assert(new Triple(contentNode, dtdl_schema, schemaNode));
+                        }
+                        // TODO: Break this out into a function (see also the brick value shape translation which uses the same code)
+                        else if (property.Target != null && IsDtdlEnumeration(property.Target)) {
+                            IUriNode dtdlSchema = dtdlModel.CreateUriNode(DTDL.schema);
+                            IUriNode dtdlName = dtdlModel.CreateUriNode(DTDL.name);
+                            IUriNode dtdlString = dtdlModel.CreateUriNode(DTDL._string);
+                            IUriNode dtdlEnum = dtdlModel.CreateUriNode(DTDL.Enum);
+                            IUriNode dtdlValueSchema = dtdlModel.CreateUriNode(DTDL.valueSchema);
+                            IUriNode dtdlEnumValue = dtdlModel.CreateUriNode(DTDL.enumValue);
+                            IUriNode dtdlEnumValues = dtdlModel.CreateUriNode(DTDL.enumValues);
+
+                            IEnumerable<string> enumOptions = property.Target.SubClasses().Select(subClass => subClass.LocalName());
+                            IBlankNode enumNode = dtdlModel.CreateBlankNode();
+                            dtdlModel.Assert(contentNode, dtdlSchema, enumNode);
+                            dtdlModel.Assert(enumNode, rdfType, dtdlEnum);
+                            dtdlModel.Assert(enumNode, dtdlValueSchema, dtdlString);
+                            
+                            foreach (string option in enumOptions)
+                            {
+                                IBlankNode enumOption = dtdlModel.CreateBlankNode();
+                                char[] numbers = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+                                string sanitizedOption = Regex.Replace(option, @"[^A-Za-z0-9_]", "_").TrimStart(numbers);
+                                dtdlModel.Assert(enumOption, dtdlName, dtdlModel.CreateLiteralNode(sanitizedOption));
+                                dtdlModel.Assert(enumOption, dtdlEnumValue, dtdlModel.CreateLiteralNode(sanitizedOption));
+                                dtdlModel.Assert(enumNode, dtdlEnumValues, enumOption);
+                            }
                         }
                     }
                     else if (property.Type == Property.PropertyType.Object) {
@@ -532,7 +558,7 @@ namespace SHACL2DTDL
         private static bool IsIgnored(IUriNode uriNode)
         {
             string uri = uriNode.Uri.AbsoluteUri;
-            return ignoredUris.Any(ignoredUri => uri.Contains(ignoredUri)) || uriNode.IsOwlDeprecated();
+            return ignoredUris.Any(ignoredUri => uri.Contains(ignoredUri)) || uriNode.IsOwlDeprecated() || IsDtdlEnumeration(uriNode) || IsSelfTyped(uriNode);
         }
 
         /// <summary>
@@ -583,6 +609,15 @@ namespace SHACL2DTDL
 
         public static bool IsBrickValueShape(IUriNode node) {
             return node.IsNodeShape() && node.SuperClasses().Any(superClass => superClass.Uri.AbsoluteUri.Contains("https://brickschema.org/schema/BrickShape#ValueShape"));
+        }
+
+        public static bool IsDtdlEnumeration(IUriNode node) {
+            return node.DirectSubClasses().Any() && node.DirectSubClasses().All(subClass => IsSelfTyped(subClass));
+        }
+
+        public static bool IsSelfTyped(IUriNode node) {
+            IUriNode rdfType = _shapesGraph.CreateUriNode(RDF.type);
+            return _shapesGraph.ContainsTriple(node, rdfType, node);
         }
 
         public static INode AssertDtdlSchemaFromBrickValueShape(NodeShape shape, Graph dtdlGraph) {
