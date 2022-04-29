@@ -67,7 +67,7 @@ namespace DotNetRdfExtensions.SHACL
 
         public List<IUriNode> LongestSuperShapesPath {
             get {
-                IEnumerable<NodeShape> directSuperShapes = this.DirectSuperShapes;
+                IEnumerable<NodeShape> directSuperShapes = this.DirectSuperShapes.Where(superShape => !superShape.IsDeprecated);
                 if (directSuperShapes.Count() < 1 || directSuperShapes.Any(superClass => superClass.IsTopThing)) {
                     return new List<IUriNode>();
                 }

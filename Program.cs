@@ -162,7 +162,7 @@ namespace SHACL2DTDL
             Console.WriteLine("Generating DTDL Interface declarations: ");
 
             // Get only explicit node shapes
-            foreach(NodeShape shape in _shapesGraph.NodeShapes().Where(nodeShape => nodeShape.Node.IsClass() && !IsIgnored(nodeShape.Node) && !nodeShape.Node.SuperClasses().Any(parentClass => IsIgnored(parentClass)))) {
+            foreach(NodeShape shape in _shapesGraph.NodeShapes().Where(nodeShape => nodeShape.Node.IsClass() && !IsIgnored(nodeShape.Node))) {
 
                 // Keeping track of which RDF properties we have already parsed on a given shape
                 // This is to ensure that, e.g., properties linked via rdfs:domain don't overwrite 
@@ -532,7 +532,7 @@ namespace SHACL2DTDL
         private static bool IsIgnored(IUriNode uriNode)
         {
             string uri = uriNode.Uri.AbsoluteUri;
-            return ignoredUris.Any(ignoredUri => uri.Contains(ignoredUri));
+            return ignoredUris.Any(ignoredUri => uri.Contains(ignoredUri)) || uriNode.IsOwlDeprecated();
         }
 
         /// <summary>

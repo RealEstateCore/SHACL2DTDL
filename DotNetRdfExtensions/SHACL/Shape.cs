@@ -1,5 +1,6 @@
 using VDS.RDF;
 using VDS.RDF.Shacl;
+using VDS.RDF.Nodes;
 
 namespace DotNetRdfExtensions.SHACL
 {
@@ -48,12 +49,12 @@ namespace DotNetRdfExtensions.SHACL
             }
         }
 
-        // TODO: Implement this to capture deprecation annotations (which ones?)
         public bool IsDeprecated 
         {
             get 
             {
-                return false;
+                IUriNode owlDeprecated = _graph.CreateUriNode(OWL.deprecated);
+                return _graph.GetTriplesWithSubjectPredicate(_node, owlDeprecated).Objects().LiteralNodes().Any(deprecationNode => deprecationNode.AsValuedNode().AsBoolean() == true);
             }
         }
     }

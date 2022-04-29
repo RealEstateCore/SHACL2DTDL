@@ -3,6 +3,7 @@ using VDS.RDF.Shacl;
 using SHACL2DTDL.VocabularyHelper;
 using VDS.RDF.Parsing;
 using VDS.RDF.Ontology;
+using VDS.RDF.Nodes;
 
 namespace DotNetRdfExtensions
 {
@@ -25,6 +26,12 @@ namespace DotNetRdfExtensions
             IUriNode rdfType = graph.CreateUriNode(RDF.type);
             IUriNode rdfsClass = graph.CreateUriNode(RDFS.Class);
             return graph.ContainsTriple(node, rdfType, rdfsClass);
+        }
+
+        public static bool IsOwlDeprecated(this INode node) {
+            IGraph graph = node.Graph;
+            IUriNode owlDeprecated = graph.CreateUriNode(OWL.deprecated);
+            return graph.GetTriplesWithSubjectPredicate(node, owlDeprecated).Objects().LiteralNodes().Any(deprecationNode => deprecationNode.AsValuedNode().AsBoolean() == true);
         }
 
         // TODO: This should probably be fixed to handle URN namespaces properly.
