@@ -316,7 +316,7 @@ namespace SHACL2DTDL
                 foreach (Property property in processedProperties) {
                     string propertyName = property.Name;
 
-                    if (RelationshipIsDefinedOnChild(shape, propertyName)) {
+                    if (RelationshipIsDefinedOnParent(shape, propertyName) || (property.Target is IUriNode target && target.IsOwlDeprecated())) {
                         continue;
                     }
 
@@ -370,9 +370,36 @@ namespace SHACL2DTDL
                             // This is a simple data property translation
                             // If target is unset, fall back to string; else try XSD translation
                             // TODO: Handle sh:in -> DTDL enumeration translation?
-                            Uri schema = property.Target is null ? DTDL._string : GetXsdAsDtdl(property.Target);
-                            schemaNode = dtdlModel.CreateUriNode(schema);
-                            dtdlModel.Assert(new Triple(contentNode, dtdl_schema, schemaNode));
+                            if (property.In.Count() > 0) {
+                                IUriNode dtdlSchema = dtdlModel.CreateUriNode(DTDL.schema);
+                                IUriNode dtdlName = dtdlModel.CreateUriNode(DTDL.name);
+                                IUriNode dtdlString = dtdlModel.CreateUriNode(DTDL._string);
+                                IUriNode dtdlEnum = dtdlModel.CreateUriNode(DTDL.Enum);
+                                IUriNode dtdlValueSchema = dtdlModel.CreateUriNode(DTDL.valueSchema);
+                                IUriNode dtdlEnumValue = dtdlModel.CreateUriNode(DTDL.enumValue);
+                                IUriNode dtdlEnumValues = dtdlModel.CreateUriNode(DTDL.enumValues);
+
+                                IEnumerable<string> enumOptions = property.In.LiteralNodes().Select(n => n.Value);
+                                IBlankNode enumNode = dtdlModel.CreateBlankNode();
+                                dtdlModel.Assert(contentNode, dtdlSchema, enumNode);
+                                dtdlModel.Assert(enumNode, rdfType, dtdlEnum);
+                                dtdlModel.Assert(enumNode, dtdlValueSchema, dtdlString);
+                                
+                                foreach (string option in enumOptions)
+                                {
+                                    IBlankNode enumOption = dtdlModel.CreateBlankNode();
+                                    char[] numbers = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+                                    string sanitizedOption = Regex.Replace(option, @"[^A-Za-z0-9_]", "_").TrimStart(numbers);
+                                    dtdlModel.Assert(enumOption, dtdlName, dtdlModel.CreateLiteralNode(sanitizedOption));
+                                    dtdlModel.Assert(enumOption, dtdlEnumValue, dtdlModel.CreateLiteralNode(sanitizedOption));
+                                    dtdlModel.Assert(enumNode, dtdlEnumValues, enumOption);
+                                }
+                            }
+                            else {
+                                Uri schema = property.Target is null ? DTDL._string : GetXsdAsDtdl(property.Target);
+                                schemaNode = dtdlModel.CreateUriNode(schema);
+                                dtdlModel.Assert(new Triple(contentNode, dtdl_schema, schemaNode));
+                            }
                         }
                         else if (property.Target != null && IsBrickValueShape(property.Target)) {
                             // This is a Brick ValueShape translation
@@ -602,9 +629,11 @@ namespace SHACL2DTDL
         /// <param name="oClass">Superclass that holds the property being checked</param>
         /// <param name="checkedForProperty">The property to check for</param>
         /// <returns>True iff this property is not defined on any subclass</returns>
-        private static bool RelationshipIsDefinedOnChild(NodeShape shape, string soughtRelationshipName)
+        private static bool RelationshipIsDefinedOnParent(NodeShape shape, string soughtRelationshipName)
         {
-            return shape.SubShapes.SelectMany(childShape => childShape.PropertyShapes).Select(ps => ps.Path).UriNodes().Any(pathNode => pathNode.LocalName() == soughtRelationshipName);
+            bool propertyShapeDefinedOnParent = shape.SuperShapes.SelectMany(superShape => superShape.PropertyShapes).Select(ps => ps.Path).UriNodes().Any(pathNode => pathNode.LocalName() == soughtRelationshipName);
+            bool rdfPropertyWithParentDomain = shape.SuperShapes.SelectMany(parentShape => _ontologyGraph.CreateOntologyClass(parentShape.Node).IsDomainOf).Any(property => property.Resource is IUriNode propertyNode && propertyNode.LocalName() == soughtRelationshipName);
+            return propertyShapeDefinedOnParent || rdfPropertyWithParentDomain;
         }
 
         public static bool IsBrickValueShape(IUriNode node) {
@@ -619,6 +648,8 @@ namespace SHACL2DTDL
             IUriNode rdfType = _shapesGraph.CreateUriNode(RDF.type);
             return _shapesGraph.ContainsTriple(node, rdfType, node);
         }
+
+
 
         public static INode AssertDtdlSchemaFromBrickValueShape(NodeShape shape, Graph dtdlGraph) {
             IUriNode dtdlSchema = dtdlGraph.CreateUriNode(DTDL.schema);
