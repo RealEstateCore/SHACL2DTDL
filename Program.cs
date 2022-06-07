@@ -417,7 +417,7 @@ namespace SHACL2DTDL
                             IUriNode dtdlEnumValue = dtdlModel.CreateUriNode(DTDL.enumValue);
                             IUriNode dtdlEnumValues = dtdlModel.CreateUriNode(DTDL.enumValues);
 
-                            IEnumerable<string> enumOptions = property.Target.SubClasses().Select(subClass => subClass.LocalName());
+                            IEnumerable<string> enumOptions = property.Target.SubClasses().Append(property.Target).SelectMany(subClass => subClass.RdfTypedMembers().UriNodes()).Select(optionNode => optionNode.LocalName());
                             IBlankNode enumNode = dtdlModel.CreateBlankNode();
                             dtdlModel.Assert(contentNode, dtdlSchema, enumNode);
                             dtdlModel.Assert(enumNode, rdfType, dtdlEnum);
@@ -641,7 +641,7 @@ namespace SHACL2DTDL
         }
 
         public static bool IsDtdlEnumeration(IUriNode node) {
-            return node.DirectSubClasses().Any() && node.DirectSubClasses().All(subClass => IsSelfTyped(subClass));
+            return node.SubClasses().Append(node).SelectMany(subClass => subClass.RdfTypedMembers()).Any();//node.DirectSubClasses().Any() && node.DirectSubClasses().All(subClass => IsSelfTyped(subClass));
         }
 
         public static bool IsSelfTyped(IUriNode node) {

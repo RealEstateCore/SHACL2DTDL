@@ -137,6 +137,11 @@ namespace DotNetRdfExtensions
                 }
                 return allSubClasses;
         }
+        
+        public static IEnumerable<INode> RdfTypedMembers(this IUriNode node) {
+            IUriNode rdfType = node.Graph.CreateUriNode(RDF.type);
+            return node.Graph.GetTriplesWithPredicateObject(rdfType, node).Subjects();
+        }
 
         public static IEnumerable<IUriNode> DirectSubClasses(this IUriNode node) {
             IUriNode rdfsSubClassOf = node.Graph.CreateUriNode(RDFS.subClassOf);
