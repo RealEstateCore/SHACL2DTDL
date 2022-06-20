@@ -328,6 +328,10 @@ namespace SHACL2DTDL
                     ILiteralNode propertyNameNode = dtdlModel.CreateLiteralNode(propertyName);
                     dtdlModel.Assert(new Triple(contentNode, dtdl_name, propertyNameNode));
 
+                    // Property is is writeable
+                    ILiteralNode trueNode = dtdlModel.CreateLiteralNode("true", new Uri(XmlSpecsHelper.XmlSchemaDataTypeBoolean));
+                    dtdlModel.Assert(new Triple(contentNode, dtdl_writable, trueNode));
+
                     // If there are property labels, use them for DTDL displayName
                     Dictionary<string,string> propertyLabelMap = new();
                     foreach (LiteralNode propertyLabel in property.Labels) {
