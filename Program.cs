@@ -137,6 +137,8 @@ namespace SHACL2DTDL
             IUriNode dtdl_Enum = dtdlModel.CreateUriNode(DTDL.Enum);
             IUriNode dtdl_EnumValue = dtdlModel.CreateUriNode(DTDL.EnumValue);
             IUriNode dtdl_Map = dtdlModel.CreateUriNode(DTDL.Map);
+            IUriNode dtdl_Array = dtdlModel.CreateUriNode(DTDL.Array);
+            IUriNode dtdl_Initialized = dtdlModel.CreateUriNode(DTDL.Initialized);
 
             // DTDL properties
             IUriNode dtdl_contents = dtdlModel.CreateUriNode(DTDL.contents);
@@ -146,6 +148,8 @@ namespace SHACL2DTDL
             IUriNode dtdl_properties = dtdlModel.CreateUriNode(DTDL.properties);
             IUriNode dtdl_mapKey = dtdlModel.CreateUriNode(DTDL.mapKey);
             IUriNode dtdl_mapValue = dtdlModel.CreateUriNode(DTDL.mapValue);
+            IUriNode dtdl_elementSchema = dtdlModel.CreateUriNode(DTDL.elementSchema);
+            IUriNode dtdl_initialValue = dtdlModel.CreateUriNode(DTDL.initialValue);
 
             IUriNode dtdl_extends = dtdlModel.CreateUriNode(DTDL.extends);
             IUriNode dtdl_maxMultiplicity = dtdlModel.CreateUriNode(DTDL.maxMultiplicity);
@@ -157,6 +161,8 @@ namespace SHACL2DTDL
 
             IUriNode dtdl_enumValue = dtdlModel.CreateUriNode(DTDL.enumValue);
             IUriNode dtdl_enumValues = dtdlModel.CreateUriNode(DTDL.enumValues);
+
+            IUriNode dtdl_string = dtdlModel.CreateUriNode(DTDL._string);
 
             Console.WriteLine();
             Console.WriteLine("Generating DTDL Interface declarations: ");
@@ -297,6 +303,40 @@ namespace SHACL2DTDL
                     // Name is writeable
                     ILiteralNode customTagsTrue = dtdlModel.CreateLiteralNode("true", new Uri(XmlSpecsHelper.XmlSchemaDataTypeBoolean));
                     dtdlModel.Assert(new Triple(customTags, dtdl_writable, customTagsTrue));
+                }
+
+                // If shape has brick:hasAssociatedTag annotation, add corresponding read-only DTDL properties
+                IUriNode hasAssociatedTag = _ontologyGraph.CreateUriNode(Brick.hasAssociatedTag);
+                IEnumerable<string> tags = _ontologyGraph.GetTriplesWithSubjectPredicate(shape.Node, hasAssociatedTag).Objects().UriNodes().Select(node => node.Uri.Fragment);
+                bool childrenHaveTags = shape.SubShapes.Select(subShape => subShape.Node).Any(subShapeNode => _ontologyGraph.GetTriplesWithSubjectPredicate(subShapeNode, hasAssociatedTag).Any());
+                if (!childrenHaveTags && tags.Any()) {
+                    IBlankNode tagsNode = dtdlModel.CreateBlankNode();
+                    dtdlModel.Assert(interfaceNode, dtdl_contents, tagsNode);
+                    dtdlModel.Assert(tagsNode, rdfType, dtdl_Property);
+                    ILiteralNode tagsNameNode = dtdlModel.CreateLiteralNode("tags");
+                    dtdlModel.Assert(tagsNode, dtdl_name, tagsNameNode);
+
+                    // Documentation properties
+                    ILiteralNode tagsDisplayName = dtdlModel.CreateLiteralNode("Tags","en");
+                    dtdlModel.Assert(tagsNode, dtdl_displayName, tagsDisplayName);
+                    ILiteralNode tagsDescription = dtdlModel.CreateLiteralNode("Brick tags associated with this interface.","en");
+                    dtdlModel.Assert(tagsNode, dtdl_description, tagsDescription);
+                    
+                    // Schema: array of strings
+                    IBlankNode schemaNode = dtdlModel.CreateBlankNode();
+                    dtdlModel.Assert(tagsNode, dtdl_schema, schemaNode);
+                    dtdlModel.Assert(schemaNode, rdfType, dtdl_Array);
+                    dtdlModel.Assert(schemaNode, dtdl_elementSchema, dtdl_string);
+
+                    // Set the initial values
+                    dtdlModel.Assert(tagsNode, rdfType, dtdl_Initialized);
+                    foreach (string tag in tags) {
+                        dtdlModel.Assert(tagsNode, dtdl_initialValue, dtdlModel.CreateLiteralNode(tag.Trim('#')));
+                    }
+
+                    // Tags are NOT writable
+                    ILiteralNode falseNode = dtdlModel.CreateLiteralNode("false", new Uri(XmlSpecsHelper.XmlSchemaDataTypeBoolean));
+                    dtdlModel.Assert(new Triple(tagsNode, dtdl_writable, falseNode));
                 }
 
                 // Index all property shapes on the node shape
@@ -533,11 +573,8 @@ namespace SHACL2DTDL
             }
             dtmi = string.Join(':', pathSegments);
 
-            // Hard-coded for now
-            string dtmiVersion = "1";
-
             // Add prefix and suffix
-            return $"dtmi:digitaltwins:{dtmi};{dtmiVersion}";
+            return $"dtmi:{dtmi}";
         }
 
         /// <summary>
@@ -567,7 +604,7 @@ namespace SHACL2DTDL
                 );
 
             JObject context;
-            using (StreamReader file = File.OpenText(@"DTDL.v2.context.json"))
+            using (StreamReader file = File.OpenText(@"DTDL.v3.context.json"))
             using (JsonTextReader reader = new JsonTextReader(file))
             {
                 context = (JObject)JToken.ReadFrom(reader);
@@ -576,7 +613,7 @@ namespace SHACL2DTDL
             JObject framedJson = JsonLdProcessor.Frame(initialJsonLd, frame, options);
             JObject compactedJson = JsonLdProcessor.Compact(framedJson, context, options);
 
-            compactedJson["@context"] = new JValue(DTDL.dtdlContext);
+            compactedJson["@context"] = new JArray{DTDL.dtdlContext, DTDL.initializationContext};
 
             return compactedJson;
         }
