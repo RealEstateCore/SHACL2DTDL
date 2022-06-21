@@ -56,9 +56,8 @@ namespace DotNetRdfExtensions.SHACL
             get {
                 IUriNode shMinCount = _graph.CreateUriNode(SH.minCount);
                 IEnumerable<int> minCounts = _graph.GetTriplesWithSubjectPredicate(_node, shMinCount)
-                    .Select(triple => triple.Object)
+                    .Objects()
                     .LiteralNodes()
-                    .Where(node => node.DataType.AbsoluteUri == XmlSpecsHelper.XmlSchemaDataTypeInt)
                     .Select(node => int.Parse(node.Value));
                 if (minCounts.Count() == 1) {
                     return minCounts.First();
@@ -73,9 +72,8 @@ namespace DotNetRdfExtensions.SHACL
             get {
                 IUriNode shMaxCount = _graph.CreateUriNode(SH.maxCount);
                 IEnumerable<int> maxCounts = _graph.GetTriplesWithSubjectPredicate(_node, shMaxCount)
-                    .Select(triple => triple.Object)
+                    .Objects()
                     .LiteralNodes()
-                    .Where(node => node.DataType.AbsoluteUri == XmlSpecsHelper.XmlSchemaDataTypeInt)
                     .Select(node => int.Parse(node.Value));
                 if (maxCounts.Count() == 1) {
                     return maxCounts.First();

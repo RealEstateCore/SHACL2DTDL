@@ -493,8 +493,7 @@ namespace SHACL2DTDL
                         // Note: we ignore minMultiplicity as it is per DTDL v2 spec always 0 
                         // (see: https://github.com/Azure/opendigitaltwins-dtdl/blob/master/DTDL/v2/dtdlv2.md#relationship)
                         if (property.MaxCardinality.HasValue) {
-                            Uri xsdInt = new Uri(XmlSpecsHelper.XmlSchemaDataTypeInt);
-                            ILiteralNode maxCardinality = dtdlModel.CreateLiteralNode(property.MaxCardinality.ToString(), xsdInt);
+                            ILiteralNode maxCardinality = dtdlModel.CreateLiteralNode(property.MaxCardinality.ToString());
                             dtdlModel.Assert(contentNode, dtdl_maxMultiplicity, maxCardinality);
                         }
                     }
