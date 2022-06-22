@@ -368,10 +368,6 @@ namespace SHACL2DTDL
                     ILiteralNode propertyNameNode = dtdlModel.CreateLiteralNode(propertyName);
                     dtdlModel.Assert(new Triple(contentNode, dtdl_name, propertyNameNode));
 
-                    // Property is is writeable
-                    ILiteralNode trueNode = dtdlModel.CreateLiteralNode("true", new Uri(XmlSpecsHelper.XmlSchemaDataTypeBoolean));
-                    dtdlModel.Assert(new Triple(contentNode, dtdl_writable, trueNode));
-
                     // If there are property labels, use them for DTDL displayName
                     Dictionary<string,string> propertyLabelMap = new();
                     foreach (LiteralNode propertyLabel in property.Labels) {
@@ -408,6 +404,10 @@ namespace SHACL2DTDL
                     if (property.Type == Property.PropertyType.Data || (property.Target != null && IsBrickValueShape(property.Target)) || property.Target != null && IsDtdlEnumeration(property.Target)) {
                         // This content node is a DTDL Property
                         dtdlModel.Assert(new Triple(contentNode, rdfType, dtdl_Property));
+
+                        // Property is is writeable
+                        ILiteralNode trueNode = dtdlModel.CreateLiteralNode("true", new Uri(XmlSpecsHelper.XmlSchemaDataTypeBoolean));
+                        dtdlModel.Assert(new Triple(contentNode, dtdl_writable, trueNode));
 
                         INode schemaNode;
                         if (property.Type == Property.PropertyType.Data) {
@@ -478,9 +478,22 @@ namespace SHACL2DTDL
                             }
                         }
                     }
+                    else if (property.Target != null && property.Target.DirectRdfTypes().Any(rdfType => rdfType.Uri.AbsoluteUri.Contains("dtmi:dtdl:class:Component"))) 
+                    {
+                        // Assert that this is a DTDL Component
+                        dtdlModel.Assert(new Triple(contentNode, rdfType, dtdl_Component));
+                        string targetDtmi = GetDTMI(property.Target);
+                        IUriNode targetNode = dtdlModel.CreateUriNode(UriFactory.Create(targetDtmi));
+                        dtdlModel.Assert(new Triple(contentNode, dtdl_schema, targetNode));
+                    }
                     else if (property.Type == Property.PropertyType.Object) {
+
                         // Assert that this is a DTDL Relationship
                         dtdlModel.Assert(new Triple(contentNode, rdfType, dtdl_Relationship));
+
+                        // Relationship is is writeable
+                        ILiteralNode trueNode = dtdlModel.CreateLiteralNode("true", new Uri(XmlSpecsHelper.XmlSchemaDataTypeBoolean));
+                        dtdlModel.Assert(new Triple(contentNode, dtdl_writable, trueNode));
 
                         // Assert the relationship target (falling back to no target if class count <> 1)
                         if (property.Target != null) {
@@ -493,7 +506,7 @@ namespace SHACL2DTDL
                         // Note: we ignore minMultiplicity as it is per DTDL v2 spec always 0 
                         // (see: https://github.com/Azure/opendigitaltwins-dtdl/blob/master/DTDL/v2/dtdlv2.md#relationship)
                         if (property.MaxCardinality.HasValue) {
-                            ILiteralNode maxCardinality = dtdlModel.CreateLiteralNode(property.MaxCardinality.ToString());
+                            ILiteralNode maxCardinality = dtdlModel.CreateLiteralNode(property.MaxCardinality.ToString(), new Uri(XmlSpecsHelper.XmlSchemaDataTypeInteger));
                             dtdlModel.Assert(contentNode, dtdl_maxMultiplicity, maxCardinality);
                         }
                     }
