@@ -509,6 +509,64 @@ namespace SHACL2DTDL
                             ILiteralNode maxCardinality = dtdlModel.CreateLiteralNode(property.MaxCardinality.ToString(), new Uri(XmlSpecsHelper.XmlSchemaDataTypeInteger));
                             dtdlModel.Assert(contentNode, dtdl_maxMultiplicity, maxCardinality);
                         }
+
+                        // Extract annotations on object properties -- these become DTDL Relationship Properties
+                        // We only support annotations w/ singleton ranges (though those singletons may be enumerations)
+                        IEnumerable<OntologyProperty> annotationsOnRelationship = _ontologyGraph.OwlAnnotationProperties
+                            .Where(annotationProp => annotationProp.Resource is IUriNode)
+                            .Where(annotationProp => annotationProp.Ranges.Count() == 1)
+                            .Where(annotationProp => annotationProp.Domains.Select(annotationDomain => annotationDomain.Resource).Contains(property.WrappedProperty));
+                        foreach (OntologyProperty annotationProperty in annotationsOnRelationship) {
+                            IUriNode annotationPropertyNode = (IUriNode)annotationProperty.Resource;
+
+                            // Define nested Property and its name
+                            IBlankNode nestedPropertyNode = dtdlModel.CreateBlankNode();
+                            dtdlModel.Assert(new Triple(nestedPropertyNode, rdfType, dtdl_Property));
+                            dtdlModel.Assert(new Triple(contentNode, dtdl_properties, nestedPropertyNode));
+                            string nestedPropertyName = string.Concat(annotationPropertyNode.LocalName().Take(64));
+                            ILiteralNode nestedPropertyNameNode = dtdlModel.CreateLiteralNode(nestedPropertyName);
+                            dtdlModel.Assert(new Triple(nestedPropertyNode, dtdl_name, nestedPropertyNameNode));
+
+                            // Assert that the nested property is writable
+                            dtdlModel.Assert(new Triple(nestedPropertyNode, dtdl_writable, trueNode));
+
+                            // If there are rdfs:labels, use them for DTDL displayName
+                            Dictionary<string,string> nestedDisplayNameMap = new();
+                            foreach (LiteralNode propertyLabel in annotationPropertyNode.RdfsLabels()) {
+                                // Flatten possibly multiple occurences of labels with a given language tag, keep only one
+                                nestedDisplayNameMap[propertyLabel.Language] = propertyLabel.Value;
+                            }
+                            foreach (string propertyLabelLanguageTag in nestedDisplayNameMap.Keys) {
+                                // Create a displayName assertion for reach of the above labels
+                                ILiteralNode dtdlDisplayNameLiteral;
+                                if (propertyLabelLanguageTag == String.Empty) // Fall back to EN language if none is defined b/c DTDL validator cannot handle language @none
+                                    dtdlDisplayNameLiteral = dtdlModel.CreateLiteralNode(string.Concat(nestedDisplayNameMap[propertyLabelLanguageTag].Take(64)),"en");
+                                else
+                                    dtdlDisplayNameLiteral = dtdlModel.CreateLiteralNode(string.Concat(nestedDisplayNameMap[propertyLabelLanguageTag].Take(64)), propertyLabelLanguageTag);
+                                dtdlModel.Assert(new Triple(nestedPropertyNode, dtdl_displayName, dtdlDisplayNameLiteral));
+                            }
+
+                            // If there are rdfs:comments, use them for DTDL description
+                            Dictionary<string,string> nestedDescriptionMap = new();
+                            foreach (LiteralNode propertyComment in annotationPropertyNode.RdfsComments()) {
+                                // Flatten possibly multiple occurences of comments with a given language tag, keep only one
+                                nestedDescriptionMap[propertyComment.Language] = propertyComment.Value;
+                            }
+                            foreach (string propertyCommentLanguageTag in nestedDescriptionMap.Keys) {
+                                // Create a description assertion for reach of the above comments
+                                ILiteralNode dtdlDescriptionLiteral;
+                                if (propertyCommentLanguageTag == String.Empty) // Fall back to EN language if none is defined b/c DTDL validator cannot handle language @none
+                                    dtdlDescriptionLiteral = dtdlModel.CreateLiteralNode(string.Concat(nestedDescriptionMap[propertyCommentLanguageTag].Take(512)),"en");
+                                else
+                                    dtdlDescriptionLiteral = dtdlModel.CreateLiteralNode(string.Concat(nestedDescriptionMap[propertyCommentLanguageTag].Take(512)), propertyCommentLanguageTag);
+                                dtdlModel.Assert(new Triple(nestedPropertyNode, dtdl_description, dtdlDescriptionLiteral));
+                            }
+
+                            // Set range
+                            OntologyClass annotationPropertyRange = annotationProperty.Ranges.First();
+                            HashSet<Triple> schemaTriples = GetDtdlTriplesForRange(annotationPropertyRange, nestedPropertyNode);
+                            dtdlModel.Assert(schemaTriples);
+                        }
                     }
                 }
 
@@ -702,6 +760,64 @@ namespace SHACL2DTDL
             return _shapesGraph.ContainsTriple(node, rdfType, node);
         }
 
+
+ /// <summary>
+        /// Generates triples representing a DTDL schema for an OWL (data) property range.
+        /// </summary>
+        /// <param name="owlPropertyRange">The range to translate (typically an XSD datatype or custom datatype)</param>
+        /// <param name="dtdlPropertyNode">The node onto which the generated triples will be grafted</param>
+        /// <returns>Set of triples representing the schema</returns>
+        private static HashSet<Triple> GetDtdlTriplesForRange(OntologyClass owlPropertyRange, INode dtdlPropertyNode)
+        {
+
+            // TODO: ensure that owlPropertyRange is named!
+            IGraph dtdlModel = dtdlPropertyNode.Graph;
+            IUriNode dtdl_schema = dtdlModel.CreateUriNode(DTDL.schema);
+            IUriNode rdfType = dtdlModel.CreateUriNode(UriFactory.Create(RdfSpecsHelper.RdfType));
+            IUriNode dtdl_Enum = dtdlModel.CreateUriNode(DTDL.Enum);
+            IUriNode dtdl_valueSchema = dtdlModel.CreateUriNode(DTDL.valueSchema);
+            IUriNode dtdl_enumValues = dtdlModel.CreateUriNode(DTDL.enumValues);
+            IUriNode dtdl_name = dtdlModel.CreateUriNode(VocabularyHelper.DTDL.name);
+            IUriNode dtdl_displayName = dtdlModel.CreateUriNode(VocabularyHelper.DTDL.displayName);
+            IUriNode dtdl_enumValue = dtdlModel.CreateUriNode(DTDL.enumValue);
+            IUriNode dtdl_comment = dtdlModel.CreateUriNode(DTDL.comment);
+            IUriNode dtdl_string = dtdlModel.CreateUriNode(DTDL._string);
+            IUriNode dtdl_unit = dtdlModel.CreateUriNode(DTDL.unit);
+
+            HashSet<Triple> returnedTriples = new HashSet<Triple>();
+
+            // First check for the simple XSD datatypes
+            if (owlPropertyRange.Resource is IUriNode && ((IUriNode)owlPropertyRange.Resource).IsXsdType())
+            {
+                Uri schemaUri = GetXsdAsDtdl((IUriNode)owlPropertyRange.Resource);
+                IUriNode schemaNode = dtdlModel.CreateUriNode(schemaUri);
+                returnedTriples.Add(new Triple(dtdlPropertyNode, dtdl_schema, schemaNode));
+                return returnedTriples;
+            }
+            
+            // This is an enumeration of allowed values
+            if (owlPropertyRange.IsEnumerationDatatype())
+            {
+                IBlankNode enumNode = dtdlModel.CreateBlankNode();
+                returnedTriples.Add(new Triple(enumNode, rdfType, dtdl_Enum));
+                returnedTriples.Add(new Triple(dtdlPropertyNode, dtdl_schema, enumNode));
+                returnedTriples.Add(new Triple(enumNode, dtdl_valueSchema, dtdl_string));
+                IEnumerable<ILiteralNode> enumOptions = owlPropertyRange.AsEnumeration().LiteralNodes();
+                foreach (ILiteralNode option in enumOptions)
+                {
+                    IBlankNode enumOption = dtdlModel.CreateBlankNode();
+                    returnedTriples.Add(new Triple(enumOption, dtdl_name, dtdlModel.CreateLiteralNode(option.Value)));
+                    returnedTriples.Add(new Triple(enumOption, dtdl_enumValue, dtdlModel.CreateLiteralNode(option.Value)));
+                    returnedTriples.Add(new Triple(enumNode, dtdl_enumValues, enumOption));
+                }
+                return returnedTriples;
+            }
+
+            // No supported schemas found; fall back to simple string schema
+            IUriNode stringSchemaNode = dtdlModel.CreateUriNode(DTDL._string);
+            returnedTriples.Add(new Triple(dtdlPropertyNode, dtdl_schema, stringSchemaNode));
+            return returnedTriples;
+        }
 
 
         public static INode AssertDtdlSchemaFromBrickValueShape(NodeShape shape, Graph dtdlGraph) {
