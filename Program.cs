@@ -638,7 +638,7 @@ namespace SHACL2DTDL
         private static bool IsIgnored(IUriNode uriNode)
         {
             string uri = uriNode.Uri.AbsoluteUri;
-            return ignoredUris.Any(ignoredUri => uri.Contains(ignoredUri)) || uriNode.IsOwlDeprecated() || IsDtdlEnumeration(uriNode) || IsSelfTyped(uriNode);
+            return ignoredUris.Any(ignoredUri => uri.Contains(ignoredUri)) || uriNode.IsOwlDeprecated() || IsBrickValueShape(uriNode) || IsDtdlEnumeration(uriNode) || IsSelfTyped(uriNode);
         }
 
         /// <summary>
