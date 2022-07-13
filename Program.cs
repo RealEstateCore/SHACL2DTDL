@@ -570,8 +570,12 @@ namespace SHACL2DTDL
                     }
                 }
 
-                 // Write JSON-LD to target file.
-                JObject modelAsJsonLd = ToJsonLd(dtdlModel);
+                 // Do JSON-LD framing and compacting of the graph
+                JObject dtdlModelAsJsonLD = ToJsonLd(dtdlModel);
+
+                // Since the compaction algorithm and context file does not cover some edge cases,
+                // we run an additional compaction using regexps to search-and-replace DTDL URNs in property keys
+                JObject regexCompactedDtdlModel = RegExCompactDTDL(dtdlModelAsJsonLD);
 
                 List<IUriNode> parentDirectories = shape.LongestSuperShapesPath;
                 string modelPath = string.Join("/", parentDirectories.Select(parent => parent.LocalName()));
@@ -583,13 +587,25 @@ namespace SHACL2DTDL
                 using (StreamWriter file = File.CreateText(outputFileName))
                 using (JsonTextWriter writer = new JsonTextWriter(file) { Formatting = Formatting.Indented })
                 {
-                    modelAsJsonLd.WriteTo(writer);
+                    regexCompactedDtdlModel.WriteTo(writer);
                 }
 
                 // Clear the working graph for next iteration
                 dtdlModel.Clear();
             }
 
+        }
+
+        private static JObject RegExCompactDTDL(JObject dtdlModelAsJsonLD)
+        {
+            string input = dtdlModelAsJsonLD.ToString();
+            string pattern = """
+                "dtmi:dtdl:[A-Za-z0-9]*:([A-Za-z0-9]*);3":
+            """;
+            string replacement = "\"$1\":";
+            string result = Regex.Replace(input, pattern, replacement);
+            JObject retVal = JObject.Parse(result);
+            return retVal;
         }
 
         /// <summary>

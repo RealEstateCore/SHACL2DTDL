@@ -7,11 +7,25 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Azure.DigitalTwins.Core" Version="1.2.2" />
     <PackageReference Include="CommandLineParser" Version="2.8.0" />
     <PackageReference Include="dotNetRDF" Version="2.7.2" />
     <PackageReference Include="Microsoft.Azure.DigitalTwins.Parser" Version="3.12.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="DTDL.v3.context.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SHACL2DTDL": {
+      "commandName": "Project",
+      "commandLineArgs": "-f C:\\Users\\karlh\\Git\\REC\\REC4\\Ontology\\SHACL\\Breck\\breck.ttl -o C:\\Users\\karlh\\Git\\REC\\REC4\\Ontology\\DTDL\\ -i C:\\Users\\karlh\\Git\\REC\\REC4\\Ontology\\DTDL\\IgnoredNames.csv"
+    }
+  }
+}
