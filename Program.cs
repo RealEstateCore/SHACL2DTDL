@@ -660,7 +660,7 @@ namespace SHACL2DTDL
             dtmi = string.Join(':', pathSegments);
 
             // Add prefix and suffix
-            return $"dtmi:{dtmi}";
+            return $"dtmi:{dtmi};1";
         }
 
         /// <summary>
