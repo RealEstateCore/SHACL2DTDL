@@ -719,13 +719,13 @@ namespace SHACL2DTDL
                     {"int", DTDL._integer },
                     {"integer", DTDL._integer },
                     {"long", DTDL._long },
-                    {"string",DTDL._string }
+                    {"string",DTDL._string },
+                    {"Polygon",DTDL._polygon}
                 };
 
             if (xsdDtdlPrimitiveTypesMappings.ContainsKey(xsdDatatype.LocalName()))
             {
                 return xsdDtdlPrimitiveTypesMappings[xsdDatatype.LocalName()];
-                
             }
 
             // Fall-back option

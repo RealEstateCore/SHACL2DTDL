@@ -79,6 +79,7 @@ namespace SHACL2DTDL.VocabularyHelper
         // TODO: Fix the Initialization class and initialValue property with correct DTMIs for this extension
         public static readonly Uri Initialized = new Uri("dtmi:dtdl:class:Initialized;3");
         public static readonly Uri initialValue = new Uri("dtmi:dtdl:property:initialValue;3");
+        public static readonly Uri _polygon = new Uri("dtmi:standard:schema:geospatial:polygon;3");
         public static readonly string dtdlContext = "dtmi:dtdl:context;3";
         public static readonly string initializationContext = "dtmi:dtdl:extension:initialization;1";
         public static readonly Uri Interface = new Uri("dtmi:dtdl:class:Interface;3");
