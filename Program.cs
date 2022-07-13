@@ -586,6 +586,22 @@ namespace SHACL2DTDL
                     regexCompactedDtdlModel["contents"] = JArray.FromObject(sortedContents);
                 }
 
+                // Sort any enums in the DTDL alphabetically
+                foreach (JToken token in RecursiveChildTokens(regexCompactedDtdlModel).ToList())
+                {
+                    if (token is JObject && token["@type"] != null && token["@type"].ToString() == "Enum")
+                    {
+                        JObject enumObject = (JObject)token;
+                        JToken? enumValues = enumObject["enumValues"];
+                        if (enumValues != null && enumValues.Type == JTokenType.Array)
+                        {
+                            JArray enumValuesArray = (JArray)enumValues;
+                            List<JToken> sortedEnumValues = enumValuesArray.OrderBy(valueToken => valueToken["name"]).ToList();
+                            enumObject["enumValues"] = JArray.FromObject(sortedEnumValues);
+                        }
+                    }
+                }
+
                 List<IUriNode> parentDirectories = shape.LongestSuperShapesPath;
                 string modelPath = string.Join("/", parentDirectories.Select(parent => parent.LocalName()));
                 string modelOutputPath = $"{_outputPath}/{modelPath}/";
@@ -603,6 +619,18 @@ namespace SHACL2DTDL
                 dtdlModel.Clear();
             }
 
+        }
+
+        private static IEnumerable<JToken> RecursiveChildTokens(JToken root)
+        {
+            yield return root;
+            foreach (JToken childToken in root.Children())
+            {
+                foreach (JToken descendantToken in RecursiveChildTokens(childToken))
+                {
+                    yield return descendantToken;
+                }
+            }
         }
 
         private static JObject RegExCompactDTDL(JObject dtdlModelAsJsonLD)
