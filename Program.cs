@@ -577,6 +577,15 @@ namespace SHACL2DTDL
                 // we run an additional compaction using regexps to search-and-replace DTDL URNs in property keys
                 JObject regexCompactedDtdlModel = RegExCompactDTDL(dtdlModelAsJsonLD);
 
+                // Sort the contents block, if it is present, by content type and alphabetically
+                JToken? contents = regexCompactedDtdlModel["contents"];
+                if (contents != null && contents.Type == JTokenType.Array)
+                {
+                    JArray contentsArray = (JArray)contents;
+                    List<JToken> sortedContents = contentsArray.OrderBy(token => token["@type"]).ThenBy(token => token["name"]).ToList();
+                    regexCompactedDtdlModel["contents"] = JArray.FromObject(sortedContents);
+                }
+
                 List<IUriNode> parentDirectories = shape.LongestSuperShapesPath;
                 string modelPath = string.Join("/", parentDirectories.Select(parent => parent.LocalName()));
                 string modelOutputPath = $"{_outputPath}/{modelPath}/";
@@ -834,7 +843,6 @@ namespace SHACL2DTDL
             returnedTriples.Add(new Triple(dtdlPropertyNode, dtdl_schema, stringSchemaNode));
             return returnedTriples;
         }
-
 
         public static INode AssertDtdlSchemaFromBrickValueShape(NodeShape shape, Graph dtdlGraph) {
             IUriNode dtdlSchema = dtdlGraph.CreateUriNode(DTDL.schema);
