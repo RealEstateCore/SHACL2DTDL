@@ -342,13 +342,13 @@ namespace SHACL2DTDL
                 // Index all property shapes on the node shape
                 // HashSet with name comparer means we only store every property once, regardless of if it is mentioned multiple times in source
                 HashSet<Property> processedProperties = new HashSet<Property>(new Property.PropertyNameComparer());
-                foreach (PropertyShape pShape in shape.PropertyShapes.Where(pShape => pShape.Path.NodeType == NodeType.Uri)) {
+                foreach (PropertyShape pShape in shape.PropertyShapes.Where(pShape => pShape.Path.NodeType == NodeType.Uri && !IsIgnored((IUriNode)pShape.Path))) {
                     processedProperties.Add(new Property(pShape));
                 }
 
                 // Index all RDFS properties with the shape in domain
                 OntologyClass oClass = _ontologyGraph.CreateOntologyClass(shape.Node);
-                foreach (OntologyProperty oProp in oClass.IsDomainOf.Where(oProp => oProp.Resource is IUriNode)) {
+                foreach (OntologyProperty oProp in oClass.IsDomainOf.Where(oProp => oProp.Resource is IUriNode && !IsIgnored((IUriNode)oProp.Resource))) {
                     processedProperties.Add(new Property(oProp));
                 }
 
