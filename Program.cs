@@ -294,7 +294,7 @@ namespace SHACL2DTDL
                     dtdlModel.Assert(new Triple(customTagsSchemaNode, dtdl_mapValue, customTagsSchemaMapValue));
                     ILiteralNode customTagsSchemaMapValueName = dtdlModel.CreateLiteralNode("tagValue");
                     dtdlModel.Assert(new Triple(customTagsSchemaMapValue, dtdl_name, customTagsSchemaMapValueName));
-                    IUriNode customTagsSchemaMapValueSchema = dtdlModel.CreateUriNode(DTDL._string);
+                    IUriNode customTagsSchemaMapValueSchema = dtdlModel.CreateUriNode(DTDL._boolean);
                     dtdlModel.Assert(new Triple(customTagsSchemaMapValue, dtdl_schema, customTagsSchemaMapValueSchema));
                     dtdlModel.Assert(new Triple(customTags, dtdl_schema, customTagsSchemaNode));
                     // Display name of custom tags is hardcoded to "Custom Tags".
