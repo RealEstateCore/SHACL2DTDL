@@ -423,7 +423,7 @@ namespace SHACL2DTDL
                                 IUriNode dtdlEnumValue = dtdlModel.CreateUriNode(DTDL.enumValue);
                                 IUriNode dtdlEnumValues = dtdlModel.CreateUriNode(DTDL.enumValues);
 
-                                IEnumerable<string> enumOptions = property.In.LiteralNodes().Select(n => n.Value);
+                                IEnumerable<string> enumOptions = property.In.LiteralNodes().Select(n => n.Value).Distinct();
                                 IBlankNode enumNode = dtdlModel.CreateBlankNode();
                                 dtdlModel.Assert(contentNode, dtdlSchema, enumNode);
                                 dtdlModel.Assert(enumNode, rdfType, dtdlEnum);
@@ -461,7 +461,7 @@ namespace SHACL2DTDL
                             IUriNode dtdlEnumValue = dtdlModel.CreateUriNode(DTDL.enumValue);
                             IUriNode dtdlEnumValues = dtdlModel.CreateUriNode(DTDL.enumValues);
 
-                            IEnumerable<string> enumOptions = property.Target.SubClasses().Append(property.Target).SelectMany(subClass => subClass.RdfTypedMembers().UriNodes()).Select(optionNode => optionNode.LocalName());
+                            IEnumerable<string> enumOptions = property.Target.SubClasses().Append(property.Target).SelectMany(subClass => subClass.RdfTypedMembers().UriNodes()).Select(optionNode => optionNode.LocalName()).Distinct();
                             IBlankNode enumNode = dtdlModel.CreateBlankNode();
                             dtdlModel.Assert(contentNode, dtdlSchema, enumNode);
                             dtdlModel.Assert(enumNode, rdfType, dtdlEnum);
@@ -917,8 +917,8 @@ namespace SHACL2DTDL
 
                     // If the property has an enumeration (rdf:List as rdfs:range or sh:in on SHACL shape) -> DTDL enumeration translation
                     if (valueShapeProperty.In.Count() > 0) {
-                        IEnumerable<string> literalNodeEnumOptions = valueShapeProperty.In.LiteralNodes().Select(node => node.Value);
-                        IEnumerable<string> uriNodeEnumOptions = valueShapeProperty.In.UriNodes().Select(node => node.LocalName());
+                        IEnumerable<string> literalNodeEnumOptions = valueShapeProperty.In.LiteralNodes().Select(node => node.Value).Distinct();
+                        IEnumerable<string> uriNodeEnumOptions = valueShapeProperty.In.UriNodes().Select(node => node.LocalName()).Distinct();
                         IEnumerable<string> allEnumOptions = literalNodeEnumOptions.Concat(uriNodeEnumOptions);
 
                         IBlankNode enumNode = dtdlGraph.CreateBlankNode();
