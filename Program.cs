@@ -48,6 +48,9 @@ namespace SHACL2DTDL
         private static readonly OntologyGraph _ontologyGraph = new OntologyGraph();
         private static readonly ShapesGraph _shapesGraph = new ShapesGraph(_ontologyGraph);
 
+        // If the shapes graph has a default prefix, after loading it will be held here and used to generate DTMIs for field names
+        private static string _defaultPrefix = "urn:";
+
         /// <summary>
         /// URIs that will be ignored by this tool, parsed from CSV file using -i command line option
         /// </summary>
@@ -107,6 +110,11 @@ namespace SHACL2DTDL
             {
                 UriLoader.Load(_ontologyGraph, new Uri(_ontologyPath));
             }
+
+            // Load default prefix if it exists
+             if (_ontologyGraph.NamespaceMap.HasNamespace("")) {
+                _defaultPrefix = _ontologyGraph.NamespaceMap.GetNamespaceUri("").AbsoluteUri;
+             }
 
             // TODO: Implement (recursive) model loading over owl:imports statements
 
@@ -227,7 +235,8 @@ namespace SHACL2DTDL
                 // If it doesn't have superclasses, implement generic name property, externalIDs, and customTags
                 else {
                     // Create name property node and name
-                    IBlankNode namePropertyNode = dtdlModel.CreateBlankNode();
+                    string nameDtmi = GetDTMI(_defaultPrefix + $"name");
+                    IUriNode namePropertyNode = dtdlModel.CreateUriNode(UriFactory.Create(nameDtmi));
                     dtdlModel.Assert(new Triple(interfaceNode, dtdl_contents, namePropertyNode));
                     dtdlModel.Assert(new Triple(namePropertyNode, rdfType, dtdl_Property));
                     ILiteralNode namePropertyDtdlNameNode = dtdlModel.CreateLiteralNode("name");
@@ -243,7 +252,8 @@ namespace SHACL2DTDL
                     dtdlModel.Assert(new Triple(namePropertyNode, dtdl_writable, namePropertyTrueNode));
 
                     // Create externalIds
-                    IBlankNode externalIds = dtdlModel.CreateBlankNode();
+                    string externalIdsDtmi = GetDTMI(_defaultPrefix + $"externalIds");
+                    IUriNode externalIds = dtdlModel.CreateUriNode(UriFactory.Create(externalIdsDtmi));
                     dtdlModel.Assert(new Triple(interfaceNode, dtdl_contents, externalIds));
                     dtdlModel.Assert(new Triple(externalIds, rdfType, dtdl_Property));
                     ILiteralNode externalIdsDtdlName = dtdlModel.CreateLiteralNode("externalIds");
@@ -274,7 +284,8 @@ namespace SHACL2DTDL
                     dtdlModel.Assert(new Triple(externalIds, dtdl_writable, externalIdsTrue));
 
                     // Create customTags
-                    IBlankNode customTags = dtdlModel.CreateBlankNode();
+                    string customTagsDtmi = GetDTMI(_defaultPrefix + $"customTags");
+                    IUriNode customTags = dtdlModel.CreateUriNode(UriFactory.Create(customTagsDtmi));
                     dtdlModel.Assert(new Triple(interfaceNode, dtdl_contents, customTags));
                     dtdlModel.Assert(new Triple(customTags, rdfType, dtdl_Property));
                     ILiteralNode customTagsDtdlName = dtdlModel.CreateLiteralNode("customTags");
@@ -310,7 +321,8 @@ namespace SHACL2DTDL
                 IEnumerable<string> tags = _ontologyGraph.GetTriplesWithSubjectPredicate(shape.Node, hasAssociatedTag).Objects().UriNodes().Select(node => node.Uri.Fragment);
                 bool childrenHaveTags = shape.SubShapes.Select(subShape => subShape.Node).Any(subShapeNode => _ontologyGraph.GetTriplesWithSubjectPredicate(subShapeNode, hasAssociatedTag).Any());
                 if (!childrenHaveTags && tags.Any()) {
-                    IBlankNode tagsNode = dtdlModel.CreateBlankNode();
+                    string tagsDtmi = GetDTMI(_defaultPrefix + $"tags");
+                    IUriNode tagsNode = dtdlModel.CreateUriNode(UriFactory.Create(tagsDtmi));
                     dtdlModel.Assert(interfaceNode, dtdl_contents, tagsNode);
                     dtdlModel.Assert(tagsNode, rdfType, dtdl_Property);
                     ILiteralNode tagsNameNode = dtdlModel.CreateLiteralNode("tags");
@@ -361,7 +373,7 @@ namespace SHACL2DTDL
                     }
 
                     // Create an object in the target interface contents field
-                    IBlankNode contentNode = dtdlModel.CreateBlankNode();
+                    IUriNode contentNode = dtdlModel.CreateUriNode(UriFactory.Create(GetDTMI(property.WrappedProperty)));
                     dtdlModel.Assert(new Triple(interfaceNode, dtdl_contents, contentNode));
 
                     // Assert the content name
@@ -520,7 +532,7 @@ namespace SHACL2DTDL
                             IUriNode annotationPropertyNode = (IUriNode)annotationProperty.Resource;
 
                             // Define nested Property and its name
-                            IBlankNode nestedPropertyNode = dtdlModel.CreateBlankNode();
+                            IUriNode nestedPropertyNode = dtdlModel.CreateUriNode(UriFactory.Create(GetDTMI(annotationPropertyNode)));
                             dtdlModel.Assert(new Triple(nestedPropertyNode, rdfType, dtdl_Property));
                             dtdlModel.Assert(new Triple(contentNode, dtdl_properties, nestedPropertyNode));
                             string nestedPropertyName = string.Concat(annotationPropertyNode.LocalName().Take(64));
@@ -645,6 +657,16 @@ namespace SHACL2DTDL
             return retVal;
         }
 
+        // These two functions are an awful hack but I'm short on time.
+        private static string GetDTMI(string uri) {
+            Uri u = UriFactory.Create(uri);
+            return GetDTMI(u);
+        }
+        private static string GetDTMI(Uri uri) {
+            IUriNode uriNode = _ontologyGraph.CreateUriNode(uri);
+            return GetDTMI(uriNode);
+        }
+
         /// <summary>
         /// Generate Digital Twin Model Identifiers; these will be based on reverse dns + path.
         /// </summary>
@@ -696,8 +718,8 @@ namespace SHACL2DTDL
             }
             dtmi = string.Join(':', pathSegments);
 
-            // Add prefix and suffix
-            return $"dtmi:{dtmi};1";
+            // Add prefix
+            return $"dtmi:{dtmi}";
         }
 
         /// <summary>
