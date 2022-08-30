@@ -11,12 +11,9 @@ namespace DotNetRdfExtensions.SHACL
             get {
                 IUriNode shTargetClass = _graph.CreateUriNode(SH.targetClass);
                 IUriNode shProperty = _graph.CreateUriNode(SH.property);
-                IEnumerable<INode> targetingNodeShapes = _graph.GetTriplesWithPredicateObject(shTargetClass, _node).Subjects();
-                foreach (INode node in targetingNodeShapes.Append(_node)) {
-                    foreach (Triple t in _graph.GetTriplesWithSubjectPredicate(node, shProperty))
-                    {
-                        yield return new PropertyShape(t.Object, _graph);
-                    }
+                foreach (Triple t in _graph.GetTriplesWithSubjectPredicate(_node, shProperty))
+                {
+                    yield return new PropertyShape(t.Object, _graph);
                 }
             }
         }

@@ -62,6 +62,9 @@ namespace SHACL2DTDL
                 // Note: pShape.Class.FirstOrDefault() can be null
                 Target = pShape.Class.FirstOrDefault();
             }
+            else {
+                Type = PropertyType.Object;
+            }
 
             In = pShape.In;
 
