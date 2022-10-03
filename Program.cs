@@ -356,7 +356,7 @@ namespace SHACL2DTDL
                 foreach (Property property in processedProperties) {
                     string propertyName = property.Name;
 
-                    if (RelationshipIsDefinedOnParent(shape, propertyName) || (property.Target is IUriNode target && target.IsOwlDeprecated())) {
+                    if (RelationshipIsDefinedOnChild(shape, propertyName) || (property.Target is IUriNode target && target.IsOwlDeprecated())) {
                         continue;
                     }
 
@@ -788,16 +788,15 @@ namespace SHACL2DTDL
         /// <summary>
         /// Checks whether a certain property shape on a node shape is also defined on any of its child shapes.
         /// This is necessary since DTDL does not allow sub-interfaces to extend properties from their super-interfaces.
-        /// TODO Rewrite docs
         /// </summary>
         /// <param name="oClass">Superclass that holds the property being checked</param>
         /// <param name="checkedForProperty">The property to check for</param>
         /// <returns>True iff this property is not defined on any subclass</returns>
-        private static bool RelationshipIsDefinedOnParent(NodeShape shape, string soughtRelationshipName)
+        private static bool RelationshipIsDefinedOnChild(NodeShape shape, string soughtRelationshipName)
         {
-            bool propertyShapeDefinedOnParent = shape.SuperShapes.SelectMany(superShape => superShape.PropertyShapes).Select(ps => ps.Path).UriNodes().Any(pathNode => pathNode.LocalName() == soughtRelationshipName);
-            bool rdfPropertyWithParentDomain = shape.SuperShapes.SelectMany(parentShape => _ontologyGraph.CreateOntologyClass(parentShape.Node).IsDomainOf).Any(property => property.Resource is IUriNode propertyNode && propertyNode.LocalName() == soughtRelationshipName);
-            return propertyShapeDefinedOnParent || rdfPropertyWithParentDomain;
+            bool propertyShapeDefinedOnChild = shape.SubShapes.SelectMany(subShape => subShape.PropertyShapes).Select(ps => ps.Path).UriNodes().Where(uriNode => !IsIgnored(uriNode)).Any(pathNode => pathNode.LocalName() == soughtRelationshipName);
+            bool rdfPropertyWithChildDomain = shape.SubShapes.SelectMany(subShape => _ontologyGraph.CreateOntologyClass(subShape.Node).IsDomainOf).Any(property => property.Resource is IUriNode propertyNode && !IsIgnored(propertyNode) && propertyNode.LocalName() == soughtRelationshipName);
+            return propertyShapeDefinedOnChild || rdfPropertyWithChildDomain;
         }
 
         public static bool IsBrickValueShape(IUriNode node) {
