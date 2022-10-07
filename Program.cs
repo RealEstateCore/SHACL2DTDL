@@ -773,7 +773,8 @@ namespace SHACL2DTDL
                     {"integer", DTDL._integer },
                     {"long", DTDL._long },
                     {"string",DTDL._string },
-                    {"Polygon",DTDL._polygon}
+                    {"Polygon",DTDL._polygon},
+                    {"Point", DTDL._point}
                 };
 
             if (xsdDtdlPrimitiveTypesMappings.ContainsKey(xsdDatatype.LocalName()))
