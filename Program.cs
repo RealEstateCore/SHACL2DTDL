@@ -53,6 +53,9 @@ namespace SHACL2DTDL
         /// </summary>
         private static readonly HashSet<string> ignoredUris = new HashSet<string>();
 
+        // Ignored statements
+        private static readonly Graph ignoredTriples = new Graph();
+
         static void Main(string[] args)
         {
             Parser.Default.ParseArguments<Options>(args)
@@ -79,6 +82,20 @@ namespace SHACL2DTDL
                            {
                                string ignoredNamesCsv = reader.ReadToEnd();
                                string[] lines = ignoredNamesCsv.Split(Environment.NewLine);
+                               foreach (string line in lines) {
+                                    string[] segments = line.Split(';');
+                                    if (segments.Length <= 2) {
+                                        ignoredUris.Add(segments.First());
+                                    }
+                                    else if (segments.Length <= 4) {
+                                        IUriNode subjectNode = ignoredTriples.CreateUriNode(UriFactory.Create(segments[0]));
+                                        IUriNode predicateNode = ignoredTriples.CreateUriNode(UriFactory.Create(segments[1]));
+                                        IUriNode objectNode = ignoredTriples.CreateUriNode(UriFactory.Create(segments[2]));
+                                        Triple retractedTriple = new Triple(subjectNode, predicateNode, objectNode);
+                                        Console.WriteLine($"Will ignore statement: {retractedTriple}");
+                                        ignoredTriples.Assert(retractedTriple);
+                                    }
+                               }
                                IEnumerable<string> values = lines.Select(line => line.Split(';').First());
                                ignoredUris.UnionWith(values);
                            }
@@ -108,6 +125,17 @@ namespace SHACL2DTDL
                 UriLoader.Load(_ontologyGraph, new Uri(_ontologyPath));
             }
 
+            foreach (Triple retractedTriple in ignoredTriples.Triples) {
+                Uri subjectIri = ((IUriNode)retractedTriple.Subject).Uri;
+                Uri predicateIri = ((IUriNode)retractedTriple.Predicate).Uri;
+                Uri objectIri = ((IUriNode)retractedTriple.Object).Uri;
+                IUriNode subjectNode = ignoredTriples.CreateUriNode(subjectIri);
+                IUriNode predicateNode = ignoredTriples.CreateUriNode(predicateIri);
+                IUriNode objectNode = ignoredTriples.CreateUriNode(objectIri);
+                Triple toRetract = new Triple(subjectNode, predicateNode, objectNode);
+                _shapesGraph.Retract(subjectNode, predicateNode, objectNode);
+                Console.WriteLine($"Retracted {subjectNode}, {predicateNode}, {objectNode}");
+            }
             // TODO: Implement (recursive) model loading over owl:imports statements
 
             // Execute the main logic that generates DTDL interfaces.
