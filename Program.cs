@@ -163,6 +163,7 @@ namespace SHACL2DTDL
             IUriNode dtdl_enumValues = dtdlModel.CreateUriNode(DTDL.enumValues);
 
             IUriNode dtdl_string = dtdlModel.CreateUriNode(DTDL._string);
+            IUriNode dtdl_boolean = dtdlModel.CreateUriNode(DTDL._boolean);
 
             Console.WriteLine();
             Console.WriteLine("Generating DTDL Interface declarations: ");
@@ -322,21 +323,34 @@ namespace SHACL2DTDL
                     ILiteralNode tagsDescription = dtdlModel.CreateLiteralNode("Brick tags associated with this interface.","en");
                     dtdlModel.Assert(tagsNode, dtdl_description, tagsDescription);
                     
-                    // Schema: array of strings
+                    // Schema: string -> bool map
                     IBlankNode schemaNode = dtdlModel.CreateBlankNode();
                     dtdlModel.Assert(tagsNode, dtdl_schema, schemaNode);
-                    dtdlModel.Assert(schemaNode, rdfType, dtdl_Array);
-                    dtdlModel.Assert(schemaNode, dtdl_elementSchema, dtdl_string);
+                    dtdlModel.Assert(schemaNode, rdfType, dtdl_Map);
+
+                    // Map key (string)
+                    IBlankNode mapKeyNode = dtdlModel.CreateBlankNode();
+                    ILiteralNode mapKeyName = dtdlModel.CreateLiteralNode("tagName");
+                    dtdlModel.Assert(mapKeyNode, dtdl_name, mapKeyName);
+                    dtdlModel.Assert(mapKeyNode, dtdl_schema, dtdl_string);
+                    dtdlModel.Assert(schemaNode, dtdl_mapKey, mapKeyNode);
+
+                    // Map value (bool)
+                    IBlankNode mapValueNode = dtdlModel.CreateBlankNode();
+                    ILiteralNode mapValueName = dtdlModel.CreateLiteralNode("tagValue");
+                    dtdlModel.Assert(mapValueNode, dtdl_name, mapValueName);
+                    dtdlModel.Assert(mapValueNode, dtdl_schema, dtdl_boolean);
+                    dtdlModel.Assert(schemaNode, dtdl_mapValue, mapValueNode);
 
                     // Set the initial values
-                    dtdlModel.Assert(tagsNode, rdfType, dtdl_Initialized);
+                    /*dtdlModel.Assert(tagsNode, rdfType, dtdl_Initialized);
                     foreach (string tag in tags) {
                         dtdlModel.Assert(tagsNode, dtdl_initialValue, dtdlModel.CreateLiteralNode(tag.Trim('#')));
-                    }
+                    }*/
 
                     // Tags are NOT writable
-                    ILiteralNode falseNode = dtdlModel.CreateLiteralNode("false", new Uri(XmlSpecsHelper.XmlSchemaDataTypeBoolean));
-                    dtdlModel.Assert(new Triple(tagsNode, dtdl_writable, falseNode));
+                    /*ILiteralNode falseNode = dtdlModel.CreateLiteralNode("false", new Uri(XmlSpecsHelper.XmlSchemaDataTypeBoolean));
+                    dtdlModel.Assert(new Triple(tagsNode, dtdl_writable, falseNode));*/
                 }
 
                 // Index all property shapes on the node shape
@@ -637,7 +651,7 @@ namespace SHACL2DTDL
         {
             string input = dtdlModelAsJsonLD.ToString();
             string pattern = """
-                "dtmi:dtdl:[A-Za-z0-9]*:([A-Za-z0-9]*);3":
+                "dtmi:dtdl:[A-Za-z0-9]*:([A-Za-z0-9]*);2":
             """;
             string replacement = "\"$1\":";
             string result = Regex.Replace(input, pattern, replacement);
@@ -727,7 +741,7 @@ namespace SHACL2DTDL
                 );
 
             JObject context;
-            using (StreamReader file = File.OpenText(@"DTDL.v3.context.json"))
+            using (StreamReader file = File.OpenText(@"DTDL.v2.context.json"))
             using (JsonTextReader reader = new JsonTextReader(file))
             {
                 context = (JObject)JToken.ReadFrom(reader);
@@ -736,7 +750,7 @@ namespace SHACL2DTDL
             JObject framedJson = JsonLdProcessor.Frame(initialJsonLd, frame, options);
             JObject compactedJson = JsonLdProcessor.Compact(framedJson, context, options);
 
-            compactedJson["@context"] = new JArray{DTDL.dtdlContext, DTDL.initializationContext};
+            compactedJson["@context"] = new JArray{DTDL.dtdlContext/*, DTDL.initializationContext*/};
 
             return compactedJson;
         }
@@ -772,9 +786,9 @@ namespace SHACL2DTDL
                     {"int", DTDL._integer },
                     {"integer", DTDL._integer },
                     {"long", DTDL._long },
-                    {"string",DTDL._string },
-                    {"Polygon",DTDL._polygon},
-                    {"Point", DTDL._point}
+                    {"string",DTDL._string }//,
+                    //{"Polygon",DTDL._polygon},
+                    //{"Point", DTDL._point}
                 };
 
             if (xsdDtdlPrimitiveTypesMappings.ContainsKey(xsdDatatype.LocalName()))
