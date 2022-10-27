@@ -96,8 +96,6 @@ namespace SHACL2DTDL
                                         ignoredTriples.Assert(retractedTriple);
                                     }
                                }
-                               IEnumerable<string> values = lines.Select(line => line.Split(';').First());
-                               ignoredUris.UnionWith(values);
                            }
                        }
 
