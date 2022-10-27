@@ -48,6 +48,9 @@ namespace SHACL2DTDL
         private static readonly OntologyGraph _ontologyGraph = new OntologyGraph();
         private static readonly ShapesGraph _shapesGraph = new ShapesGraph(_ontologyGraph);
 
+        // Ignored statements
+        private static readonly Graph ignoredTriples = new Graph();
+
         /// <summary>
         /// URIs that will be ignored by this tool, parsed from CSV file using -i command line option
         /// </summary>
@@ -79,8 +82,19 @@ namespace SHACL2DTDL
                            {
                                string ignoredNamesCsv = reader.ReadToEnd();
                                string[] lines = ignoredNamesCsv.Split(Environment.NewLine);
-                               IEnumerable<string> values = lines.Select(line => line.Split(';').First());
-                               ignoredUris.UnionWith(values);
+                               foreach (string line in lines) {
+                                    string[] segments = line.Split(';');
+                                    if (segments.Length <= 2) {
+                                        ignoredUris.Add(segments.First());
+                                    }
+                                    else if (segments.Length <= 4) {
+                                        IUriNode subjectNode = ignoredTriples.CreateUriNode(UriFactory.Create(segments[0]));
+                                        IUriNode predicateNode = ignoredTriples.CreateUriNode(UriFactory.Create(segments[1]));
+                                        IUriNode objectNode = ignoredTriples.CreateUriNode(UriFactory.Create(segments[2]));
+                                        Triple retractedTriple = new Triple(subjectNode, predicateNode, objectNode);
+                                        ignoredTriples.Assert(retractedTriple);
+                                    }
+                               }
                            }
                        }
 
@@ -106,6 +120,17 @@ namespace SHACL2DTDL
             else
             {
                 UriLoader.Load(_ontologyGraph, new Uri(_ontologyPath));
+            }
+
+            foreach (Triple retractedTriple in ignoredTriples.Triples) {
+                Uri subjectIri = ((IUriNode)retractedTriple.Subject).Uri;
+                Uri predicateIri = ((IUriNode)retractedTriple.Predicate).Uri;
+                Uri objectIri = ((IUriNode)retractedTriple.Object).Uri;
+                IUriNode subjectNode = ignoredTriples.CreateUriNode(subjectIri);
+                IUriNode predicateNode = ignoredTriples.CreateUriNode(predicateIri);
+                IUriNode objectNode = ignoredTriples.CreateUriNode(objectIri);
+                Triple toRetract = new Triple(subjectNode, predicateNode, objectNode);
+                _shapesGraph.Retract(subjectNode, predicateNode, objectNode);
             }
 
             // TODO: Implement (recursive) model loading over owl:imports statements
