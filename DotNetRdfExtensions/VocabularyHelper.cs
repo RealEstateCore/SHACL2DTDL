@@ -37,6 +37,10 @@ namespace DotNetRdfExtensions
             public static readonly Uri type = new Uri("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
     }
 
+    public static class SKOS 
+    {
+        public static readonly Uri definition = new Uri("http://www.w3.org/2004/02/skos/core#definition");
+    }
     public static class RDFS
     {
         public static readonly Uri label = new Uri("http://www.w3.org/2000/01/rdf-schema#label");

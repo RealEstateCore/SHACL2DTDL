@@ -87,6 +87,16 @@ namespace DotNetRdfExtensions
             }
         }
 
+        public static IEnumerable<ILiteralNode> SkosDefinitions(this INode node) {
+            IUriNode skosDefinition = node.Graph.CreateUriNode(SKOS.definition);
+            foreach (Triple t in node.Graph.GetTriplesWithSubjectPredicate(node, skosDefinition))
+            {
+                if (t.Object.NodeType == NodeType.Literal) {
+                    yield return (ILiteralNode)t.Object;
+                }
+            }
+        }
+
         public static IEnumerable<IUriNode> PropertiesThroughRdfsDomain(this IUriNode node) {
             IUriNode rdfsDomain = node.Graph.CreateUriNode(RDFS.domain);
             foreach (Triple t in node.Graph.GetTriplesWithPredicateObject(rdfsDomain, node))

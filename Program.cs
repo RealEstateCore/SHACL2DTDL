@@ -223,11 +223,13 @@ namespace SHACL2DTDL
                     dtdlModel.Assert(new Triple(interfaceNode, dtdl_displayName, dtdlDisplayNameLiteral));
                 }
 
-                // If there are rdfs:comments, use them for DTDL description
+                // If there are rdfs:comments or skos:definitions, use them for DTDL description
+                // Note skos are listed first, i.e., we give precedence to RDFS:comments if both exist.
                 Dictionary<string,string> descriptionMap = new();
-                foreach (LiteralNode shapeComment in shape.Node.RdfsComments()) {
+                IEnumerable<ILiteralNode> rdfsCommentsAndSkosDefinitions = shape.Node.SkosDefinitions().Concat(shape.Node.RdfsComments());
+                foreach (LiteralNode shapeDescription in rdfsCommentsAndSkosDefinitions) {
                     // Flatten possibly multiple occurences of comments with a given language tag, keep only one
-                    descriptionMap[shapeComment.Language] = shapeComment.Value;
+                    descriptionMap[shapeDescription.Language] = shapeDescription.Value;
                 }
                 foreach (string shapeCommentLanguageTag in descriptionMap.Keys) {
                     // Create a description assertion for reach of the above comments
