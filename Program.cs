@@ -7,7 +7,6 @@ using VDS.RDF;
 using VDS.RDF.Ontology;
 using VDS.RDF.Parsing;
 using VDS.RDF.JsonLd;
-using VDS.RDF.Shacl;
 using VDS.RDF.Writing;
 using DotNetRdfExtensions;
 using DotNetRdfExtensions.SHACL;
@@ -38,7 +37,7 @@ namespace SHACL2DTDL
         private static bool _noImports;
         private static bool _localOntology;
         private static string _ontologyPath = "";
-        private static string? _outputPath;
+        private static string _outputPath = string.Empty;
         private static bool _mergedOutput;
         private static string? _ontologySource;
 
@@ -46,7 +45,7 @@ namespace SHACL2DTDL
         /// The RDF graph holding the SHACL-formatted ontology upon which this tool subsequently operates.
         /// </summary>
         private static readonly OntologyGraph _ontologyGraph = new OntologyGraph();
-        private static readonly ShapesGraph _shapesGraph = new ShapesGraph(_ontologyGraph);
+        private static readonly VDS.RDF.Shacl.ShapesGraph _shapesGraph = new(_ontologyGraph);
 
         // Ignored statements
         private static readonly Graph ignoredTriples = new Graph();
@@ -643,13 +642,27 @@ namespace SHACL2DTDL
                     }
                 }
 
-                List<IUriNode> parentDirectories = shape.LongestSuperShapesPath;
-                string modelPath = string.Join("/", parentDirectories.Select(parent => parent.LocalName()));
-                string modelOutputPath = $"{_outputPath}/{modelPath}/";
-                // If the class has subclasses, place it with them
-                if (shape.DirectSubShapes.Any()) { modelOutputPath += $"{shape.Node.LocalName()}/"; }
-                Directory.CreateDirectory(modelOutputPath);
-                string outputFileName = modelOutputPath + shape.Node.LocalName() + ".json";
+                // Storage is based on longest parent path to root
+                List<string> localStoragePath = shape.LongestSuperShapesPath.Select(parentShape => parentShape.LocalName()).ToList();
+
+                // If the class has subclasses, place it together with them in subdirectory named per itself
+                if (shape.DirectSubShapes.Any()) {
+                    localStoragePath.Add(shape.Node.LocalName());
+                }
+
+                // Append class name to storage path
+                localStoragePath.Add(shape.Node.LocalName());
+
+                // Shorten storage path length by reducing duplicated substrings
+                List<string> shortenedLocalStoragePath = ShortenStoragePath(localStoragePath);
+
+                // Concatenate components and add file ending
+                List<string> globalStoragePath = shortenedLocalStoragePath.Prepend(_outputPath).ToList();
+                string outputFileName = string.Join(Path.DirectorySeparatorChar, globalStoragePath) + ".json";
+
+                // Create storage directory
+                Directory.CreateDirectory(Path.GetDirectoryName(outputFileName)!);
+
                 using (StreamWriter file = File.CreateText(outputFileName))
                 using (JsonTextWriter writer = new JsonTextWriter(file) { Formatting = Formatting.Indented })
                 {
@@ -660,6 +673,38 @@ namespace SHACL2DTDL
                 dtdlModel.Clear();
             }
 
+        }
+
+        private static List<string> ShortenStoragePath(List<string> originalStoragePath) {
+            
+            // Output storage path holding shortened path components
+            List<string> shortenedStoragePath = new List<string>();
+
+            // Iterate over input storage from leaf towards root, skipping last node 
+            // (b/c it has nothing next to compare against)
+            for (int i = originalStoragePath.Count - 1; i > 0; i--) 
+            {
+                string currentComponent = originalStoragePath[i];
+                int nextIndex = i - 1;
+                string nextComponent = originalStoragePath[nextIndex];
+                // If next (parent) path component is a strict substring of self, 
+                // replace that substring in self with "-"
+                if (currentComponent.Contains(nextComponent) && currentComponent != nextComponent) {
+                    string shortenedComponent = currentComponent.Replace(nextComponent, "-").Replace("_-", "-");
+                    shortenedStoragePath.Add(shortenedComponent);
+                }
+                // Otherwise, just return current component unshortened
+                else {
+                    shortenedStoragePath.Add(currentComponent);
+                }
+            }
+            // Since we skipped the last component, we add it back manually
+            shortenedStoragePath.Add(originalStoragePath[0]);
+
+            // At this point shortened storage path (created in leaf->root iteration above) 
+            // needs to be reverted to return a root -> leaf path at which to store files
+            shortenedStoragePath.Reverse();
+            return shortenedStoragePath;
         }
 
         private static IEnumerable<JToken> RecursiveChildTokens(JToken root)
