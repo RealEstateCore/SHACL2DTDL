@@ -11,8 +11,8 @@
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
             "program": "${workspaceFolder}/bin/Debug/net6.0/SHACL2DTDL.dll",
-            "args": ["-f","C:/rec/Ontology/SHACL/Brick/Brick+patches.ttl","-o","C:/rec/Ontology/DTDLv2/Brick/","-i","C:/rec/Ontology/SHACL/IgnoredInTranslationToDTDL.csv"],
-            //"args": ["-f","C:/rec/Ontology/SHACL/RealEstateCore/rec.ttl","-o","C:/rec/Ontology/DTDLv2/RealEstateCore/","-i","C:/rec/Ontology/SHACL/IgnoredInTranslationToDTDL.csv"],
+            //"args": ["-f","C:/rec/Source/SHACL/Brick/Brick+patches.ttl","-o","C:/rec/Source/DTDLv2/Brick/","-i","C:/rec/Source/SHACL/IgnoredInTranslationToDTDL.csv"],
+            "args": ["-f","C:/rec/Source/SHACL/RealEstateCore/rec.ttl","-o","C:/rec/Source/DTDLv2/RealEstateCore/","-i","C:/rec/Source/SHACL/IgnoredInTranslationToDTDL.csv"],
             "cwd": "${workspaceFolder}",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",
