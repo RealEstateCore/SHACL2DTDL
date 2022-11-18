@@ -189,6 +189,8 @@ namespace SHACL2DTDL
             IUriNode dtdl_string = dtdlModel.CreateUriNode(DTDL._string);
             IUriNode dtdl_boolean = dtdlModel.CreateUriNode(DTDL._boolean);
 
+            IUriNode dtdl_unit = dtdlModel.CreateUriNode(DTDL.unit);
+
             Console.WriteLine();
             Console.WriteLine("Generating DTDL Interface declarations: ");
 
@@ -483,6 +485,29 @@ namespace SHACL2DTDL
                                 Uri schema = property.Target is null ? DTDL._string : GetXsdAsDtdl(property.Target);
                                 schemaNode = dtdlModel.CreateUriNode(schema);
                                 dtdlModel.Assert(new Triple(contentNode, dtdl_schema, schemaNode));
+
+                                // QUDT parsing and DTDL semantic typing here
+                                List<Uri> dtdlNumericTypes = new List<Uri> {DTDL._float, DTDL._double, DTDL._long, DTDL._integer};
+                                if (property.Name == "value" && dtdlNumericTypes.Contains(schema)) {
+                                    IUriNode hasQuantityKind = _ontologyGraph.CreateUriNode(QUDT.hasQuantityKind);
+                                    IEnumerable<IUriNode> quantityKinds = _ontologyGraph.GetTriplesWithSubjectPredicate(shape.Node, hasQuantityKind).Objects().UriNodes();;
+                                    if (quantityKinds.Count() == 1) {
+                                        IUriNode quantityKind = quantityKinds.First();
+                                        Uri? dtdlSemanticTypeUri = GetQkAsSemanticType(quantityKind.Uri);
+                                        if (dtdlSemanticTypeUri != null) {
+                                            
+                                            Uri dtdlSemanticUnitUri = GetUnitForSemanticType(dtdlSemanticTypeUri);
+                                        
+                                            IUriNode dtdlSemanticType = dtdlModel.CreateUriNode(dtdlSemanticTypeUri);
+                                            IUriNode dtdlSemanticUnit = dtdlModel.CreateUriNode(dtdlSemanticUnitUri);
+
+                                            dtdlModel.Assert(new Triple(contentNode, rdfType, dtdlSemanticType));
+                                            dtdlModel.Assert(new Triple(contentNode, dtdl_unit, dtdlSemanticUnit));
+                                        }
+                                        
+                                    }
+                                }
+
                             }
                         }
                         else if (property.Target != null && IsBrickValueShape(property.Target)) {
@@ -673,6 +698,38 @@ namespace SHACL2DTDL
                 dtdlModel.Clear();
             }
 
+        }
+
+        private static Uri GetUnitForSemanticType(Uri semanticTypeUri)
+        {
+             Dictionary<Uri, Uri> defaultDtdlSemanticUnits = new Dictionary<Uri, Uri>
+                {
+                    { DTDL.Energy, DTDL.kilowattHour },
+                    { DTDL.Angle, DTDL.degreeOfArc }
+                };
+
+            if (defaultDtdlSemanticUnits.ContainsKey(semanticTypeUri))
+            {
+                return defaultDtdlSemanticUnits[semanticTypeUri];
+            }
+
+            throw new NotImplementedException();
+        }
+
+        private static Uri? GetQkAsSemanticType(Uri quantityKind)
+        {
+            Dictionary<Uri, Uri> qkToDtdlTypeMappings = new Dictionary<Uri, Uri>
+                {
+                    { QUDT.QuantityKindNS.Energy, DTDL.Energy },
+                    { QUDT.QuantityKindNS.Angle, DTDL.Angle }
+                };
+
+            if (qkToDtdlTypeMappings.ContainsKey(quantityKind))
+            {
+                return qkToDtdlTypeMappings[quantityKind];
+            }
+
+            return null;
         }
 
         private static List<string> ShortenStoragePath(List<string> originalStoragePath) {
